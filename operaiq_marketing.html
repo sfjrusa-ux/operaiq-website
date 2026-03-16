@@ -1,0 +1,499 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>OperaIQ — Your Virtual COO</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;0,700;1,400&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --navy:   #1B3A6B;
+  --steel:  #2E75B6;
+  --sky:    #5BA3D9;
+  --mist:   #B8D0E8;
+  --cloud:  #EBF3FA;
+  --fog:    #F5F8FB;
+  --white:  #FFFFFF;
+  --ink:    #1A2535;
+  --mid:    #5B6F85;
+  --light:  #8BA5C0;
+}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+body { font-family: 'DM Sans', sans-serif; background: var(--white); color: var(--ink); overflow-x: hidden; }
+
+/* ── NAV ─────────────────────────────────────────────────────── */
+nav {
+  position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0 5%; height: 72px;
+  background: rgba(255,255,255,0.95);
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid rgba(27,58,107,0.08);
+  transition: box-shadow 0.3s;
+}
+nav.scrolled { box-shadow: 0 2px 24px rgba(27,58,107,0.1); }
+.nav-logo { display: flex; align-items: center; gap: 12px; text-decoration: none; }
+.nav-logo-icon { width: 36px; height: 36px; }
+.nav-logo-text { font-family: 'Cormorant Garamond', serif; font-size: 22px; font-weight: 700; color: var(--navy); letter-spacing: -0.5px; }
+.nav-logo-text span { color: var(--steel); font-weight: 400; }
+.nav-links { display: flex; align-items: center; gap: 36px; list-style: none; }
+.nav-links a { font-size: 14px; font-weight: 500; color: var(--mid); text-decoration: none; transition: color 0.2s; }
+.nav-links a:hover { color: var(--navy); }
+.nav-cta { display: flex; gap: 12px; align-items: center; }
+.btn-ghost { padding: 8px 20px; border: 1.5px solid var(--mist); border-radius: 6px; font-size: 14px; font-weight: 500; color: var(--navy); background: none; cursor: pointer; transition: all 0.2s; text-decoration: none; }
+.btn-ghost:hover { border-color: var(--steel); color: var(--steel); }
+.btn-primary { padding: 9px 22px; border-radius: 6px; font-size: 14px; font-weight: 600; color: white; background: var(--navy); border: none; cursor: pointer; transition: all 0.2s; text-decoration: none; }
+.btn-primary:hover { background: var(--steel); transform: translateY(-1px); box-shadow: 0 4px 16px rgba(27,58,107,0.25); }
+
+/* ── HERO ─────────────────────────────────────────────────────── */
+.hero {
+  min-height: 100vh;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  text-align: center;
+  padding: 120px 5% 80px;
+  background: linear-gradient(160deg, var(--fog) 0%, var(--white) 50%, var(--cloud) 100%);
+  position: relative; overflow: hidden;
+}
+.hero::before {
+  content: '';
+  position: absolute; top: -200px; right: -200px;
+  width: 600px; height: 600px; border-radius: 50%;
+  background: radial-gradient(circle, rgba(46,117,182,0.06) 0%, transparent 70%);
+  pointer-events: none;
+}
+.hero::after {
+  content: '';
+  position: absolute; bottom: -150px; left: -150px;
+  width: 500px; height: 500px; border-radius: 50%;
+  background: radial-gradient(circle, rgba(27,58,107,0.05) 0%, transparent 70%);
+  pointer-events: none;
+}
+.hero-eyebrow {
+  display: inline-flex; align-items: center; gap: 8px;
+  font-size: 11px; font-weight: 600; letter-spacing: 3px; text-transform: uppercase;
+  color: var(--steel); background: rgba(46,117,182,0.08);
+  padding: 6px 16px; border-radius: 20px; margin-bottom: 32px;
+  animation: fadeUp 0.6s ease both;
+}
+.hero-eyebrow::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: var(--steel); }
+.hero-title {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: clamp(48px, 7vw, 88px);
+  font-weight: 700; line-height: 1.05;
+  color: var(--navy); letter-spacing: -2px;
+  margin-bottom: 12px;
+  animation: fadeUp 0.6s 0.1s ease both;
+}
+.hero-title em { font-style: italic; color: var(--steel); }
+.hero-subtitle {
+  font-size: clamp(16px, 2vw, 20px); font-weight: 300;
+  color: var(--mid); max-width: 580px; line-height: 1.7;
+  margin: 0 auto 48px;
+  animation: fadeUp 0.6s 0.2s ease both;
+}
+.hero-actions {
+  display: flex; gap: 16px; justify-content: center; flex-wrap: wrap;
+  margin-bottom: 72px;
+  animation: fadeUp 0.6s 0.3s ease both;
+}
+.btn-hero { padding: 14px 32px; border-radius: 8px; font-size: 15px; font-weight: 600; cursor: pointer; transition: all 0.25s; text-decoration: none; display: inline-block; }
+.btn-hero-primary { background: var(--navy); color: white; border: none; box-shadow: 0 4px 20px rgba(27,58,107,0.3); }
+.btn-hero-primary:hover { background: var(--steel); transform: translateY(-2px); box-shadow: 0 8px 28px rgba(46,117,182,0.4); }
+.btn-hero-secondary { background: white; color: var(--navy); border: 2px solid var(--mist); }
+.btn-hero-secondary:hover { border-color: var(--steel); transform: translateY(-2px); }
+.hero-trust {
+  display: flex; align-items: center; gap: 28px; flex-wrap: wrap; justify-content: center;
+  animation: fadeUp 0.6s 0.4s ease both;
+}
+.trust-item { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--light); }
+.trust-item svg { width: 16px; height: 16px; color: var(--sky); }
+
+/* ── STATS BAND ───────────────────────────────────────────────── */
+.stats-band {
+  background: var(--navy);
+  padding: 52px 5%;
+  display: grid; grid-template-columns: repeat(4, 1fr);
+  gap: 1px;
+}
+.stat-item {
+  text-align: center; padding: 24px 16px;
+  border-right: 1px solid rgba(255,255,255,0.08);
+}
+.stat-item:last-child { border-right: none; }
+.stat-number { font-family: 'Cormorant Garamond', serif; font-size: 52px; font-weight: 700; color: white; line-height: 1; }
+.stat-unit { font-size: 22px; color: var(--sky); }
+.stat-label { font-size: 12px; font-weight: 500; letter-spacing: 2px; text-transform: uppercase; color: var(--mist); margin-top: 8px; }
+
+/* ── SECTION SHARED ───────────────────────────────────────────── */
+section { padding: 100px 5%; }
+.section-eyebrow { font-size: 11px; font-weight: 600; letter-spacing: 3px; text-transform: uppercase; color: var(--steel); margin-bottom: 16px; }
+.section-title { font-family: 'Cormorant Garamond', serif; font-size: clamp(36px, 4vw, 56px); font-weight: 700; color: var(--navy); line-height: 1.1; letter-spacing: -1px; margin-bottom: 20px; }
+.section-sub { font-size: 17px; font-weight: 300; color: var(--mid); line-height: 1.7; max-width: 560px; }
+
+/* ── PROBLEM ──────────────────────────────────────────────────── */
+.problem { background: var(--fog); }
+.problem-inner { max-width: 1100px; margin: 0 auto; display: grid; grid-template-columns: 1fr 1fr; gap: 80px; align-items: center; }
+.problem-pains { display: flex; flex-direction: column; gap: 20px; margin-top: 40px; }
+.pain-item { display: flex; gap: 16px; align-items: flex-start; padding: 20px; background: white; border-radius: 10px; border-left: 3px solid var(--mist); transition: border-color 0.2s; }
+.pain-item:hover { border-left-color: var(--steel); }
+.pain-icon { width: 36px; height: 36px; border-radius: 8px; background: var(--cloud); display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 16px; }
+.pain-text h4 { font-size: 14px; font-weight: 600; color: var(--navy); margin-bottom: 4px; }
+.pain-text p { font-size: 13px; color: var(--mid); line-height: 1.5; }
+.solution-highlight { background: var(--navy); border-radius: 16px; padding: 48px; color: white; }
+.solution-highlight h3 { font-family: 'Cormorant Garamond', serif; font-size: 32px; font-weight: 700; margin-bottom: 16px; line-height: 1.2; }
+.solution-highlight p { font-size: 15px; color: var(--mist); line-height: 1.7; margin-bottom: 28px; }
+.solution-price { display: flex; align-items: flex-end; gap: 8px; }
+.price-big { font-family: 'Cormorant Garamond', serif; font-size: 56px; font-weight: 700; color: white; line-height: 1; }
+.price-detail { font-size: 14px; color: var(--sky); margin-bottom: 6px; }
+
+/* ── SERVICES GRID ────────────────────────────────────────────── */
+.services { background: white; }
+.services-inner { max-width: 1100px; margin: 0 auto; }
+.services-header { text-align: center; margin-bottom: 64px; }
+.services-header .section-sub { margin: 0 auto; }
+.services-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 24px; }
+.service-card {
+  padding: 32px 28px; border-radius: 12px; border: 1px solid var(--cloud);
+  transition: all 0.25s; cursor: default; position: relative; overflow: hidden;
+}
+.service-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px; background: linear-gradient(90deg, var(--steel), var(--sky)); transform: scaleX(0); transition: transform 0.3s; transform-origin: left; }
+.service-card:hover { border-color: var(--mist); box-shadow: 0 8px 32px rgba(27,58,107,0.1); transform: translateY(-3px); }
+.service-card:hover::before { transform: scaleX(1); }
+.service-icon { width: 48px; height: 48px; border-radius: 10px; background: var(--cloud); display: flex; align-items: center; justify-content: center; margin-bottom: 20px; font-size: 22px; }
+.service-card h3 { font-size: 15px; font-weight: 600; color: var(--navy); margin-bottom: 10px; }
+.service-card p { font-size: 13px; color: var(--mid); line-height: 1.6; }
+
+/* ── HOW IT WORKS ─────────────────────────────────────────────── */
+.how { background: var(--fog); }
+.how-inner { max-width: 900px; margin: 0 auto; text-align: center; }
+.how-steps { display: grid; grid-template-columns: repeat(3, 1fr); gap: 48px; margin-top: 64px; position: relative; }
+.how-steps::before { content: ''; position: absolute; top: 28px; left: calc(16.66% + 24px); right: calc(16.66% + 24px); height: 1.5px; background: linear-gradient(90deg, var(--mist), var(--sky), var(--mist)); }
+.step { text-align: center; }
+.step-num { width: 56px; height: 56px; border-radius: 50%; background: var(--navy); color: white; font-family: 'Cormorant Garamond', serif; font-size: 24px; font-weight: 700; display: flex; align-items: center; justify-content: center; margin: 0 auto 20px; position: relative; z-index: 1; }
+.step h4 { font-size: 16px; font-weight: 600; color: var(--navy); margin-bottom: 10px; }
+.step p { font-size: 13px; color: var(--mid); line-height: 1.6; }
+
+/* ── PRICING ──────────────────────────────────────────────────── */
+.pricing { background: white; }
+.pricing-inner { max-width: 900px; margin: 0 auto; text-align: center; }
+.pricing-toggle { display: inline-flex; gap: 0; border: 1.5px solid var(--mist); border-radius: 8px; overflow: hidden; margin: 40px auto 56px; }
+.toggle-btn { padding: 10px 28px; font-size: 14px; font-weight: 500; border: none; background: none; cursor: pointer; transition: all 0.2s; color: var(--mid); }
+.toggle-btn.active { background: var(--navy); color: white; }
+.pricing-cards { display: grid; grid-template-columns: 1fr 1fr; gap: 28px; max-width: 680px; margin: 0 auto; }
+.pricing-card { padding: 40px 36px; border-radius: 16px; border: 1.5px solid var(--cloud); text-align: left; position: relative; transition: all 0.25s; }
+.pricing-card.featured { border-color: var(--navy); box-shadow: 0 8px 40px rgba(27,58,107,0.15); }
+.pricing-badge { position: absolute; top: -12px; left: 50%; transform: translateX(-50%); background: var(--navy); color: white; font-size: 11px; font-weight: 600; letter-spacing: 2px; text-transform: uppercase; padding: 4px 14px; border-radius: 20px; white-space: nowrap; }
+.plan-name { font-size: 13px; font-weight: 600; letter-spacing: 2px; text-transform: uppercase; color: var(--steel); margin-bottom: 16px; }
+.plan-price { font-family: 'Cormorant Garamond', serif; font-size: 56px; font-weight: 700; color: var(--navy); line-height: 1; }
+.plan-price sup { font-size: 22px; vertical-align: top; margin-top: 12px; }
+.plan-price sub { font-size: 16px; color: var(--mid); font-family: 'DM Sans', sans-serif; font-weight: 400; }
+.plan-desc { font-size: 13px; color: var(--mid); margin: 12px 0 28px; line-height: 1.5; }
+.plan-features { list-style: none; display: flex; flex-direction: column; gap: 12px; margin-bottom: 32px; }
+.plan-features li { display: flex; gap: 10px; align-items: flex-start; font-size: 13px; color: var(--ink); }
+.plan-features li::before { content: '✓'; color: var(--steel); font-weight: 700; flex-shrink: 0; margin-top: 1px; }
+.plan-cta { display: block; text-align: center; padding: 13px; border-radius: 8px; font-size: 14px; font-weight: 600; text-decoration: none; transition: all 0.2s; }
+.plan-cta-primary { background: var(--navy); color: white; }
+.plan-cta-primary:hover { background: var(--steel); }
+.plan-cta-secondary { border: 1.5px solid var(--mist); color: var(--navy); }
+.plan-cta-secondary:hover { border-color: var(--steel); }
+.pricing-note { font-size: 13px; color: var(--light); margin-top: 32px; }
+
+/* ── FAQ ──────────────────────────────────────────────────────── */
+.faq { background: var(--fog); }
+.faq-inner { max-width: 720px; margin: 0 auto; }
+.faq-inner .section-title, .faq-inner .section-eyebrow { text-align: center; }
+.faq-list { margin-top: 48px; display: flex; flex-direction: column; gap: 0; }
+.faq-item { border-bottom: 1px solid var(--cloud); }
+.faq-q { display: flex; justify-content: space-between; align-items: center; padding: 22px 4px; cursor: pointer; font-size: 15px; font-weight: 500; color: var(--navy); gap: 16px; }
+.faq-icon { width: 24px; height: 24px; border-radius: 50%; border: 1.5px solid var(--mist); display: flex; align-items: center; justify-content: center; flex-shrink: 0; transition: all 0.2s; color: var(--steel); font-size: 18px; font-weight: 300; }
+.faq-item.open .faq-icon { background: var(--navy); border-color: var(--navy); color: white; transform: rotate(45deg); }
+.faq-a { display: none; padding: 0 4px 20px; font-size: 14px; color: var(--mid); line-height: 1.7; }
+.faq-item.open .faq-a { display: block; }
+
+/* ── CTA BAND ─────────────────────────────────────────────────── */
+.cta-band { background: linear-gradient(135deg, var(--navy) 0%, #0f2347 100%); padding: 100px 5%; text-align: center; position: relative; overflow: hidden; }
+.cta-band::before { content: ''; position: absolute; top: -200px; left: 50%; transform: translateX(-50%); width: 600px; height: 600px; border-radius: 50%; background: radial-gradient(circle, rgba(91,163,217,0.15) 0%, transparent 70%); }
+.cta-band h2 { font-family: 'Cormorant Garamond', serif; font-size: clamp(40px, 5vw, 64px); font-weight: 700; color: white; letter-spacing: -1.5px; margin-bottom: 20px; position: relative; }
+.cta-band p { font-size: 17px; font-weight: 300; color: var(--mist); margin-bottom: 48px; position: relative; }
+.cta-band .btn-hero-primary { font-size: 16px; padding: 16px 40px; position: relative; }
+
+/* ── FOOTER ───────────────────────────────────────────────────── */
+footer { background: #0a1a30; padding: 60px 5% 36px; }
+.footer-top { display: grid; grid-template-columns: 2fr 1fr 1fr 1fr; gap: 48px; margin-bottom: 48px; }
+.footer-brand p { font-size: 13px; color: rgba(255,255,255,0.4); line-height: 1.7; margin-top: 16px; max-width: 280px; }
+.footer-col h5 { font-size: 11px; font-weight: 600; letter-spacing: 2px; text-transform: uppercase; color: rgba(255,255,255,0.35); margin-bottom: 16px; }
+.footer-col ul { list-style: none; display: flex; flex-direction: column; gap: 10px; }
+.footer-col a { font-size: 13px; color: rgba(255,255,255,0.5); text-decoration: none; transition: color 0.2s; }
+.footer-col a:hover { color: var(--sky); }
+.footer-bottom { border-top: 1px solid rgba(255,255,255,0.07); padding-top: 28px; display: flex; justify-content: space-between; align-items: center; }
+.footer-bottom p { font-size: 12px; color: rgba(255,255,255,0.25); }
+
+/* ── ANIMATIONS ───────────────────────────────────────────────── */
+@keyframes fadeUp { from { opacity: 0; transform: translateY(24px); } to { opacity: 1; transform: translateY(0); } }
+.reveal { opacity: 0; transform: translateY(28px); transition: opacity 0.6s ease, transform 0.6s ease; }
+.reveal.visible { opacity: 1; transform: translateY(0); }
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav id="nav">
+  <a href="#" class="nav-logo">
+    <svg class="nav-logo-icon" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <linearGradient id="ng1" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" style="stop-color:#2E75B6"/><stop offset="100%" style="stop-color:#1B3A6B"/></linearGradient>
+        <linearGradient id="ng2" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" style="stop-color:#5BA3D9"/><stop offset="100%" style="stop-color:#2E75B6"/></linearGradient>
+      </defs>
+      <circle cx="50" cy="50" r="36" fill="none" stroke="url(#ng1)" stroke-width="5.5" stroke-dasharray="181 45" stroke-dashoffset="12" stroke-linecap="round"/>
+      <circle cx="50" cy="50" r="23" fill="none" stroke="url(#ng2)" stroke-width="4.5" stroke-dasharray="105 40" stroke-dashoffset="-22" stroke-linecap="round"/>
+      <circle cx="50" cy="50" r="5.5" fill="url(#ng1)"/>
+      <line x1="50" y1="9" x2="50" y2="2.5" stroke="#1B3A6B" stroke-width="3.5" stroke-linecap="round"/>
+      <line x1="81.2" y1="68.5" x2="86.8" y2="78.2" stroke="#2E75B6" stroke-width="3" stroke-linecap="round"/>
+      <line x1="18.8" y1="68.5" x2="13.2" y2="78.2" stroke="#2E75B6" stroke-width="3" stroke-linecap="round"/>
+    </svg>
+    <span class="nav-logo-text">Opera<span>IQ</span></span>
+  </a>
+  <ul class="nav-links">
+    <li><a href="#services">Services</a></li>
+    <li><a href="#how">How It Works</a></li>
+    <li><a href="#pricing">Pricing</a></li>
+    <li><a href="#faq">FAQ</a></li>
+  </ul>
+  <div class="nav-cta">
+    <a href="operaiq_dashboard.html" class="btn-ghost">Log In</a>
+    <a href="#pricing" class="btn-primary">Start Free Trial</a>
+  </div>
+</nav>
+
+<!-- HERO -->
+<section class="hero" id="home">
+  <div class="hero-eyebrow">AI-Powered Operations for Small Business</div>
+  <h1 class="hero-title">Your Business Runs.<br><em>Even When You Don't.</em></h1>
+  <p class="hero-subtitle">OperaIQ is a 24/7 virtual COO — answering calls, booking appointments, following up on leads, and invoicing clients so you can focus on the work you love.</p>
+  <div class="hero-actions">
+    <a href="#pricing" class="btn-hero btn-hero-primary">Start Your Free 14-Day Trial</a>
+    <a href="operaiq_dashboard.html" class="btn-hero btn-hero-secondary">View Live Demo →</a>
+  </div>
+  <div class="hero-trust">
+    <div class="trust-item">
+      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><polyline points="2,8 6,12 14,4"/></svg>
+      No contract, cancel anytime
+    </div>
+    <div class="trust-item">
+      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><polyline points="2,8 6,12 14,4"/></svg>
+      Live in under 48 hours
+    </div>
+    <div class="trust-item">
+      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><polyline points="2,8 6,12 14,4"/></svg>
+      Works for any service business
+    </div>
+    <div class="trust-item">
+      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><polyline points="2,8 6,12 14,4"/></svg>
+      Serves clients globally
+    </div>
+  </div>
+</section>
+
+<!-- STATS -->
+<div class="stats-band reveal">
+  <div class="stat-item"><div class="stat-number">24<span class="stat-unit">/7</span></div><div class="stat-label">Always On</div></div>
+  <div class="stat-item"><div class="stat-number">8</div><div class="stat-label">Core Modules</div></div>
+  <div class="stat-item"><div class="stat-number"><span class="stat-unit">$</span>297</div><div class="stat-label">Per Month</div></div>
+  <div class="stat-item"><div class="stat-number">48<span class="stat-unit">hr</span></div><div class="stat-label">To Go Live</div></div>
+</div>
+
+<!-- PROBLEM -->
+<section class="problem" id="problem">
+  <div class="problem-inner">
+    <div>
+      <p class="section-eyebrow reveal">The Problem</p>
+      <h2 class="section-title reveal">Running a business<br><em>is exhausting.</em></h2>
+      <p class="section-sub reveal">You started your business to do the work you love — not to spend your days on hold, chasing invoices, and missing calls while you're on a job.</p>
+      <div class="problem-pains reveal">
+        <div class="pain-item"><div class="pain-icon">📞</div><div class="pain-text"><h4>Missed calls = missed revenue</h4><p>Every unanswered call is a customer who called your competitor next.</p></div></div>
+        <div class="pain-item"><div class="pain-icon">📅</div><div class="pain-text"><h4>Scheduling is a full-time job</h4><p>Booking, rescheduling, and confirming appointments eats hours you don't have.</p></div></div>
+        <div class="pain-item"><div class="pain-icon">💸</div><div class="pain-text"><h4>Late invoices hurt cash flow</h4><p>Chasing payments is awkward and time-consuming — so most owners put it off.</p></div></div>
+        <div class="pain-item"><div class="pain-icon">📧</div><div class="pain-text"><h4>Leads go cold while you're busy</h4><p>Responding to enquiries 24 hours later means your conversion rate tanks.</p></div></div>
+      </div>
+    </div>
+    <div class="reveal">
+      <div class="solution-highlight">
+        <h3>What if your business ran itself?</h3>
+        <p>OperaIQ handles every operational task from the moment a customer reaches out — to the moment they pay their invoice — so nothing falls through the cracks.</p>
+        <div class="solution-price">
+          <div class="price-big">$297</div>
+          <div class="price-detail">/ month<br><span style="color:rgba(184,208,232,0.7);font-size:12px;">vs. $2,000–$5,000 for a part-time hire</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- SERVICES -->
+<section class="services" id="services">
+  <div class="services-inner">
+    <div class="services-header">
+      <p class="section-eyebrow reveal">What OperaIQ Does</p>
+      <h2 class="section-title reveal">Eight modules.<br>One unified platform.</h2>
+      <p class="section-sub reveal">Every service is connected — so your calendar, your team, your customers, and your cash flow are always in sync.</p>
+    </div>
+    <div class="services-grid">
+      <div class="service-card reveal"><div class="service-icon">📅</div><h3>Calendar Management</h3><p>Book, amend, and cancel appointments automatically. Real-time visual dashboard of every customer interaction.</p></div>
+      <div class="service-card reveal"><div class="service-icon">👥</div><h3>Employee Task Assignment</h3><p>Assign jobs with dates and deadlines. AI auto-assigns the best available team member based on their schedule.</p></div>
+      <div class="service-card reveal"><div class="service-icon">✅</div><h3>Appointment Confirmations</h3><p>Every booking triggers an instant text and email confirmation to the customer — branded to your business.</p></div>
+      <div class="service-card reveal"><div class="service-icon">🔔</div><h3>Appointment Reminders</h3><p>Automated reminders at 48 and 24 hours before every appointment. Reduce no-shows and protect your revenue.</p></div>
+      <div class="service-card reveal"><div class="service-icon">📞</div><h3>AI Phone Answering</h3><p>Our AI answers every inbound call 24/7, handles intake, books appointments, and routes calls to you if needed.</p></div>
+      <div class="service-card reveal"><div class="service-icon">⚡</div><h3>Lead Follow-Up</h3><p>Inbound emails are auto-responded to within seconds. AI asks the right questions to qualify and convert leads.</p></div>
+      <div class="service-card reveal"><div class="service-icon">🧾</div><h3>Invoicing & Payments</h3><p>Invoices and estimates are generated and sent automatically. Collect deposits before service begins.</p></div>
+      <div class="service-card reveal"><div class="service-icon">📊</div><h3>Live Analytics</h3><p>Real-time dashboard showing appointments, cancellations, lead conversion, revenue, and team performance.</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- HOW IT WORKS -->
+<section class="how" id="how">
+  <div class="how-inner">
+    <p class="section-eyebrow reveal">How It Works</p>
+    <h2 class="section-title reveal">Up and running in 48 hours.</h2>
+    <p class="section-sub reveal" style="margin: 0 auto;">No technical setup. No developers. No stress. We configure everything for your business.</p>
+    <div class="how-steps">
+      <div class="step reveal"><div class="step-num">1</div><h4>Complete Onboarding</h4><p>Fill out a simple questionnaire about your business — services, hours, pricing, and preferences.</p></div>
+      <div class="step reveal"><div class="step-num">2</div><h4>We Configure Everything</h4><p>Our team sets up all integrations, AI responses, and your custom dashboard within 48 hours.</p></div>
+      <div class="step reveal"><div class="step-num">3</div><h4>Go Live & Grow</h4><p>Your business operates on autopilot. You focus on delivery — we handle everything else.</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- PRICING -->
+<section class="pricing" id="pricing">
+  <div class="pricing-inner">
+    <p class="section-eyebrow reveal">Transparent Pricing</p>
+    <h2 class="section-title reveal">One price. Everything included.</h2>
+    <p class="section-sub reveal" style="margin: 0 auto;">No setup fees. No per-user pricing. No surprise add-ons. Just flat-rate access to the full OperaIQ platform.</p>
+    <div class="pricing-toggle reveal">
+      <button class="toggle-btn active" onclick="setMonthly()">Monthly</button>
+      <button class="toggle-btn" onclick="setAnnual()">Annual <span style="color:#5BA3D9;font-size:11px;margin-left:4px;">Save 17%</span></button>
+    </div>
+    <div class="pricing-cards reveal">
+      <div class="pricing-card">
+        <div class="plan-name">Monthly</div>
+        <div class="plan-price" id="price-monthly"><sup>$</sup>297<sub>/mo</sub></div>
+        <p class="plan-desc">Billed month-to-month. Cancel anytime with no penalty.</p>
+        <ul class="plan-features">
+          <li>All 8 service modules included</li>
+          <li>24/7 AI phone answering</li>
+          <li>Unlimited appointments</li>
+          <li>Automated SMS + email</li>
+          <li>Invoice + payment processing</li>
+          <li>Real-time analytics dashboard</li>
+          <li>Up to 25 employees</li>
+          <li>Onboarding call included</li>
+        </ul>
+        <a href="#" class="plan-cta plan-cta-secondary">Start Free Trial</a>
+      </div>
+      <div class="pricing-card featured">
+        <div class="pricing-badge">Best Value</div>
+        <div class="plan-name">Annual</div>
+        <div class="plan-price" id="price-annual"><sup>$</sup>247<sub>/mo</sub></div>
+        <p class="plan-desc">Billed as $2,970/year. Save $594 compared to monthly billing.</p>
+        <ul class="plan-features">
+          <li>Everything in Monthly</li>
+          <li>Priority onboarding (24hr)</li>
+          <li>Dedicated account manager</li>
+          <li>Custom AI voice & tone</li>
+          <li>White-labeled client portal</li>
+          <li>Advanced reporting exports</li>
+          <li>Multi-location support</li>
+          <li>Quarterly strategy calls</li>
+        </ul>
+        <a href="#" class="plan-cta plan-cta-primary">Start Free Trial</a>
+      </div>
+    </div>
+    <p class="pricing-note reveal">All plans include a 14-day free trial. No credit card required to start.</p>
+  </div>
+</section>
+
+<!-- FAQ -->
+<section class="faq" id="faq">
+  <div class="faq-inner">
+    <p class="section-eyebrow">Frequently Asked Questions</p>
+    <h2 class="section-title">Everything you need to know.</h2>
+    <div class="faq-list">
+      <div class="faq-item"><div class="faq-q" onclick="toggleFaq(this)">What types of businesses does OperaIQ work for?<span class="faq-icon">+</span></div><div class="faq-a">OperaIQ is designed for any service-based business with up to 25 employees — including trades (plumbers, electricians, cleaners), health & wellness (therapists, personal trainers, salons), professional services (accountants, consultants, lawyers), and more. If you take appointments, answer calls, and send invoices — OperaIQ is built for you.</div></div>
+      <div class="faq-item"><div class="faq-q" onclick="toggleFaq(this)">How long does it take to get set up?<span class="faq-icon">+</span></div><div class="faq-a">Most clients are fully live within 48 hours of completing our onboarding questionnaire. We handle all the configuration, integrations, and testing on our end. You'll receive a 30-minute orientation call once everything is ready.</div></div>
+      <div class="faq-item"><div class="faq-q" onclick="toggleFaq(this)">Do I need any technical skills or software?<span class="faq-icon">+</span></div><div class="faq-a">None at all. OperaIQ is a fully managed service. You access your dashboard through any web browser or our mobile app, and we handle all the technical infrastructure behind the scenes.</div></div>
+      <div class="faq-item"><div class="faq-q" onclick="toggleFaq(this)">Does the AI phone answering really sound natural?<span class="faq-icon">+</span></div><div class="faq-a">Yes. We use best-in-class conversational AI that handles natural interruptions, follow-up questions, and complex booking scenarios. Most callers don't know they're speaking with an AI. You can listen to sample calls during your onboarding call.</div></div>
+      <div class="faq-item"><div class="faq-q" onclick="toggleFaq(this)">Can I use my existing phone number and email?<span class="faq-icon">+</span></div><div class="faq-a">Yes. We can port your existing business phone number to the OperaIQ system, or set up call forwarding so there's no disruption to your business. For email, we connect to your existing Gmail or Outlook inbox.</div></div>
+      <div class="faq-item"><div class="faq-q" onclick="toggleFaq(this)">What happens if I want to cancel?<span class="faq-icon">+</span></div><div class="faq-a">Monthly subscribers can cancel at any time with no penalty — you keep access until the end of your billing period. Annual subscribers can cancel but the year's subscription is non-refundable. All your data is exportable at any time.</div></div>
+    </div>
+  </div>
+</section>
+
+<!-- CTA BAND -->
+<section class="cta-band">
+  <h2>Ready to get your time back?</h2>
+  <p>Join hundreds of small business owners who've put their operations on autopilot.</p>
+  <a href="#pricing" class="btn-hero btn-hero-primary">Start Your Free 14-Day Trial</a>
+</section>
+
+<!-- FOOTER -->
+<footer>
+  <div class="footer-top">
+    <div class="footer-brand">
+      <div style="display:flex;align-items:center;gap:10px;">
+        <svg width="32" height="32" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+          <circle cx="50" cy="50" r="36" fill="none" stroke="#5BA3D9" stroke-width="5.5" stroke-dasharray="181 45" stroke-dashoffset="12" stroke-linecap="round"/>
+          <circle cx="50" cy="50" r="23" fill="none" stroke="#B8D0E8" stroke-width="4.5" stroke-dasharray="105 40" stroke-dashoffset="-22" stroke-linecap="round"/>
+          <circle cx="50" cy="50" r="5.5" fill="#5BA3D9"/>
+          <line x1="50" y1="9" x2="50" y2="2.5" stroke="#FFFFFF" stroke-width="3.5" stroke-linecap="round"/>
+          <line x1="81.2" y1="68.5" x2="86.8" y2="78.2" stroke="#B8D0E8" stroke-width="3" stroke-linecap="round"/>
+          <line x1="18.8" y1="68.5" x2="13.2" y2="78.2" stroke="#B8D0E8" stroke-width="3" stroke-linecap="round"/>
+        </svg>
+        <span style="font-family:'Cormorant Garamond',serif;font-size:20px;font-weight:700;color:white;">Opera<span style="color:#5BA3D9;font-weight:400;">IQ</span></span>
+      </div>
+      <p>Virtual COO services for small businesses worldwide. Your operations, on autopilot — 24 hours a day.</p>
+    </div>
+    <div class="footer-col"><h5>Product</h5><ul><li><a href="#services">Services</a></li><li><a href="#pricing">Pricing</a></li><li><a href="operaiq_dashboard.html">Dashboard Demo</a></li><li><a href="#how">How It Works</a></li></ul></div>
+    <div class="footer-col"><h5>Company</h5><ul><li><a href="#">About</a></li><li><a href="#">Blog</a></li><li><a href="#">Careers</a></li><li><a href="#">Contact</a></li></ul></div>
+    <div class="footer-col"><h5>Legal</h5><ul><li><a href="#">Privacy Policy</a></li><li><a href="#">Terms of Service</a></li><li><a href="#">Data Processing</a></li><li><a href="#">Security</a></li></ul></div>
+  </div>
+  <div class="footer-bottom">
+    <p>© 2026 OperaIQ. A subsidiary of Akasha Holdings LLC. All rights reserved.</p>
+    <p style="color:rgba(255,255,255,0.2);">Built for the world's small businesses.</p>
+  </div>
+</footer>
+
+<script>
+// Nav scroll effect
+window.addEventListener('scroll', () => {
+  document.getElementById('nav').classList.toggle('scrolled', window.scrollY > 20);
+});
+
+// Scroll reveal
+const observer = new IntersectionObserver(entries => {
+  entries.forEach(e => { if (e.isIntersecting) { e.target.classList.add('visible'); } });
+}, { threshold: 0.1, rootMargin: '0px 0px -40px 0px' });
+document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
+
+// FAQ toggle
+function toggleFaq(el) {
+  const item = el.parentElement;
+  const wasOpen = item.classList.contains('open');
+  document.querySelectorAll('.faq-item').forEach(i => i.classList.remove('open'));
+  if (!wasOpen) item.classList.add('open');
+}
+
+// Pricing toggle
+function setMonthly() {
+  document.querySelectorAll('.toggle-btn')[0].classList.add('active');
+  document.querySelectorAll('.toggle-btn')[1].classList.remove('active');
+}
+function setAnnual() {
+  document.querySelectorAll('.toggle-btn')[1].classList.add('active');
+  document.querySelectorAll('.toggle-btn')[0].classList.remove('active');
+}
+</script>
+</body>
+</html>
