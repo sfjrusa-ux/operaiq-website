@@ -247,6 +247,50 @@ function openAddLeadModal(){var m=document.getElementById("add-lead-modal");if(m
 function setLeadPriority(level,btn){document.getElementById("lead-priority").value=level;document.querySelectorAll(".lead-priority-btn").forEach(function(b){b.style.background="#fff";b.style.borderColor="#B8D0E8";b.style.color="#1B3A6B";});btn.style.background="#EBF3FA";btn.style.borderColor="#2E75B6";btn.style.color="#2E75B6";}
 function confirmAddLead(){var fn=document.getElementById("lead-first-name").value.trim();var ln=document.getElementById("lead-last-name").value.trim();var ph=document.getElementById("lead-phone").value.trim();var em=document.getElementById("lead-email").value.trim();var sv=document.getElementById("lead-service").value.trim();if(!fn||!ln||!ph||!em||!sv){alert("Please fill in all required fields (marked with *).");return;}var autoRespond=document.getElementById("lead-auto-respond").checked;var priority=document.getElementById("lead-priority").value;document.getElementById("add-lead-modal").style.display="none";var msg="Lead added: "+fn+" "+ln+" ("+sv+") - "+priority+" priority";if(autoRespond)msg+=" - AI response sent";if(window.showToast)showToast(msg,"success");var leadsList=document.querySelector(".leads-list,.active-leads,[id*=leads-list]");if(leadsList){var row=document.createElement("div");row.style.cssText="display:flex;justify-content:space-between;align-items:center;padding:12px 16px;border-bottom:1px solid #EBF3FA;";row.innerHTML="<div><strong style='color:#1B3A6B;font-size:14px;'>"+fn+" "+ln+"</strong><div style='font-size:12px;color:#8BA5C0;margin-top:2px;'>"+sv+" - "+ph+"</div></div><span style='font-size:11px;font-weight:600;padding:3px 10px;border-radius:20px;background:#EBF3FA;color:#2E75B6;'>New</span>";leadsList.insertBefore(row,leadsList.firstChild);}}
 
+
+function openEditTemplate(){
+  var m=document.getElementById('edit-template-modal');
+  if(!m)return;
+  // Pre-populate with current template content if available
+  var cards=document.querySelectorAll('.card');
+  var emailCard=null;
+  for(var i=0;i<cards.length;i++){if(cards[i].textContent.includes('AI Email Auto-Response')){emailCard=cards[i];break;}}
+  var currentContent=emailCard?emailCard.querySelector('.card-body>div'):null;
+  if(currentContent&&currentContent.innerText&&!currentContent.innerText.includes('TEST')){
+    var body=document.getElementById('template-body');
+    if(body&&currentContent.innerText.trim().length>20) body.value=currentContent.innerText.trim();
+  }
+  m.style.display='flex';
+}
+function saveEmailTemplate(){
+  var subject=document.getElementById('template-subject')?.value.trim();
+  var body=document.getElementById('template-body')?.value.trim();
+  if(!body){alert('Please enter an email body.');return;}
+  // Update the preview in the AI Email card
+  var cards=document.querySelectorAll('.card');
+  var emailCard=null;
+  for(var i=0;i<cards.length;i++){if(cards[i].textContent.includes('AI Email Auto-Response')){emailCard=cards[i];break;}}
+  var el=emailCard?emailCard.querySelector('.card-body>div'):null;
+  if(el){
+    var lines=body.split('\n').filter(function(l){return l.trim().length>0;});
+    el.innerHTML='<div style="font-size:13px;line-height:1.8;color:#1A2535;padding:8px;">'
+      +'<p style="font-size:11px;font-weight:600;letter-spacing:1px;color:#8BA5C0;margin-bottom:12px;">SENT AUTOMATICALLY TO: [Customer Name]</p>'
+      +lines.map(function(l){return '<p>'+l.replace(/</g,'&lt;').replace(/>/g,'&gt;')+'</p>';}).join('')
+      +'</div>';
+  }
+  document.getElementById('edit-template-modal').style.display='none';
+  if(window.showToast)showToast('&#x2713; Email template saved successfully','success');
+}
+function generateTemplateWithAI(){
+  var prompt=document.getElementById('template-ai-prompt')?.value.trim();
+  if(!prompt){alert('Please describe your service type first.');return;}
+  var body=document.getElementById('template-body');
+  if(!body)return;
+  body.value='Generating...';
+  setTimeout(function(){
+    body.value='Hi [Customer Name],\n\nThank you for reaching out about your '+prompt+' request. We\u2019ve received your inquiry and one of our specialists will be in touch within 24 hours with a detailed estimate.\n\nIn the meantime, please don\u2019t hesitate to call us at (307) 224-6900 or reply to this email with any additional details about your project.\n\nWe look forward to working with you!\n\nBest regards,\n[Business Name]\nPowered by OperaIQ';
+  },1200);
+}
 // === DOMContentLoaded init ===
 document.addEventListener("DOMContentLoaded",function(){
   syncAttentionCount();
@@ -557,7 +601,7 @@ document.addEventListener("DOMContentLoaded",function(){
         </div>
       </div>
       <div style="margin-top:20px;" class="card">
-        <div class="card-header"><h3>AI Email Auto-Response Preview <span onclick="customizeEmailAI()" style="font-size:11px;background:#EBF3FA;color:#2E75B6;padding:3px 10px;border-radius:20px;font-weight:600;cursor:pointer;margin-left:8px;">&#x2726; Customize with AI</span></h3><button class="btn btn-outline btn-sm" onclick="showToast('Settings saved!')">Edit Template</button></div>
+        <div class="card-header"><h3>AI Email Auto-Response Preview <span onclick="customizeEmailAI()" style="font-size:11px;background:#EBF3FA;color:#2E75B6;padding:3px 10px;border-radius:20px;font-weight:600;cursor:pointer;margin-left:8px;">&#x2726; Customize with AI</span></h3><button class="btn btn-outline btn-sm" onclick="openEditTemplate()">Edit Template</button></div>
         <div class="card-body">
           <div style="background:var(--fog);border-radius:8px;padding:20px;border-left:3px solid var(--steel);">
             <p style="font-size:12px;color:var(--mid);margin-bottom:8px;font-weight:600;">SENT AUTOMATICALLY TO: D. Chen at 2:14 PM</p>
@@ -619,7 +663,7 @@ document.addEventListener("DOMContentLoaded",function(){
             <div class="toggle-row"><div class="toggle-info"><h4>2-hour reminder</h4><p>Send a final reminder 2 hours before appointment</p></div><button class="toggle" onclick="this.classList.toggle('on')"></button></div>
             <div class="toggle-row"><div class="toggle-info"><h4>Appointment confirmation</h4><p>Send confirmation immediately when appointment is booked</p></div><button class="toggle on" onclick="this.classList.toggle('on')"></button></div>
             <div class="toggle-row"><div class="toggle-info"><h4>Cancellation notifications</h4><p>Notify owner when a customer cancels</p></div><button class="toggle on" onclick="this.classList.toggle('on')"></button></div>
-            <div style="margin-top:20px;"><h4 style="font-size:13px;font-weight:600;color:var(--navy);margin-bottom:12px;">SMS Message Template</h4><textarea style="width:100%;" rows="3">Hi {customer_name}! This is a reminder from {business_name} &#x2014; your appointment is scheduled for {date} at {time}. Reply CONFIRM to confirm or CANCEL to cancel.</textarea><button class="btn btn-navy btn-sm" style="margin-top:10px;" onclick="showToast('Template saved!')">Save Template</button></div>
+            <div style="margin-top:20px;"><h4 style="font-size:13px;font-weight:600;color:var(--navy);margin-bottom:12px;">SMS Message Template</h4><textarea style="width:100%;" rows="3">Hi {customer_name}! This is a reminder from {business_name} &#x2014; your appointment is scheduled for {date} at {time}. Reply CONFIRM to confirm or CANCEL to cancel.</textarea><button class="btn btn-navy btn-sm" style="margin-top:10px;" onclick="saveEmailTemplate()">Save Template</button></div>
           </div>
         </div>
         <div class="card">
@@ -828,6 +872,51 @@ function showToast(msg) {
       <div style="display:flex;gap:12px;margin-top:4px;">
         <button onclick="document.getElementById('add-lead-modal').style.display='none'" style="flex:1;padding:12px;border:1.5px solid #B8D0E8;border-radius:8px;background:#fff;color:#1B3A6B;font-size:14px;font-weight:600;cursor:pointer;">Cancel</button>
         <button onclick="confirmAddLead()" style="flex:2;padding:12px;border:none;border-radius:8px;background:#1B3A6B;color:#fff;font-size:14px;font-weight:700;cursor:pointer;">&#x26A1; Add Lead</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="edit-template-modal" style="display:none;position:fixed;inset:0;background:rgba(27,58,107,.55);z-index:9999;align-items:center;justify-content:center;overflow-y:auto;">
+  <div style="background:#fff;border-radius:16px;padding:32px;max-width:640px;width:92%;margin:20px auto;box-shadow:0 20px 60px rgba(27,58,107,.25);">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+      <h3 style="color:#1B3A6B;font-size:20px;font-weight:700;margin:0;">&#x2709;&#xFE0F; Edit AI Email Template</h3>
+      <button onclick="document.getElementById('edit-template-modal').style.display='none'" style="background:none;border:none;font-size:26px;cursor:pointer;color:#B8D0E8;line-height:1;">&times;</button>
+    </div>
+    <p style="font-size:13px;color:#8BA5C0;margin-bottom:20px;">This template is sent automatically when a new lead inquiry is received. Use <strong>[Customer Name]</strong>, <strong>[Business Name]</strong>, and <strong>[Service Request]</strong> as placeholders.</p>
+    <div style="display:flex;flex-direction:column;gap:14px;">
+      <div>
+        <label style="font-size:12px;font-weight:600;color:#1B3A6B;display:block;margin-bottom:5px;">Email Subject Line</label>
+        <input id="template-subject" type="text" value="Thanks for reaching out &#x2014; [Business Name]" style="width:100%;padding:10px;border:1px solid #B8D0E8;border-radius:8px;font-size:14px;color:#1A2535;box-sizing:border-box;">
+      </div>
+      <div>
+        <label style="font-size:12px;font-weight:600;color:#1B3A6B;display:block;margin-bottom:5px;">Email Body</label>
+        <textarea id="template-body" rows="10" style="width:100%;padding:12px;border:1px solid #B8D0E8;border-radius:8px;font-size:13px;color:#1A2535;line-height:1.7;resize:vertical;box-sizing:border-box;font-family:inherit;">Hi [Customer Name],
+
+Thank you for reaching out about your [Service Request] request. We&#x2019;ve received your inquiry and one of our specialists will be in touch within 24 hours with a detailed estimate.
+
+In the meantime, please don&#x2019;t hesitate to call us at (307) 224-6900 or reply to this email with any additional details.
+
+We look forward to working with you!
+
+Best regards,
+[Business Name]
+Powered by OperaIQ</textarea>
+      </div>
+      <div style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:#F5F8FB;border-radius:8px;border:1px solid #EBF3FA;">
+        <input type="checkbox" id="template-auto-send" checked style="width:16px;height:16px;cursor:pointer;">
+        <label for="template-auto-send" style="font-size:13px;color:#1B3A6B;cursor:pointer;font-weight:500;">Send automatically when a new lead inquiry is received</label>
+      </div>
+      <div>
+        <label style="font-size:12px;font-weight:600;color:#1B3A6B;display:block;margin-bottom:8px;">&#x2726; Generate with AI instead</label>
+        <div style="display:flex;gap:8px;">
+          <input id="template-ai-prompt" type="text" placeholder="Describe your service type (e.g. roofing, plumbing, landscaping...)" style="flex:1;padding:10px;border:1px solid #B8D0E8;border-radius:8px;font-size:13px;box-sizing:border-box;">
+          <button onclick="generateTemplateWithAI()" style="padding:10px 16px;border:none;border-radius:8px;background:#2E75B6;color:#fff;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap;">Generate</button>
+        </div>
+      </div>
+      <div style="display:flex;gap:12px;margin-top:4px;">
+        <button onclick="document.getElementById('edit-template-modal').style.display='none'" style="flex:1;padding:12px;border:1.5px solid #B8D0E8;border-radius:8px;background:#fff;color:#1B3A6B;font-size:14px;font-weight:600;cursor:pointer;">Cancel</button>
+        <button onclick="saveEmailTemplate()" style="flex:2;padding:12px;border:none;border-radius:8px;background:#1B3A6B;color:#fff;font-size:14px;font-weight:700;cursor:pointer;">&#x2713; Save Template</button>
       </div>
     </div>
   </div>
