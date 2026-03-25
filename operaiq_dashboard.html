@@ -576,7 +576,19 @@ function acceptTask(id){if(window.showToast)showToast("Task accepted","success")
 function completeTask(id){if(window.showToast)showToast("Task complete","success");}
 
 // === Calendar ===
-function setCalView(v){document.querySelectorAll(".cal-view-btn").forEach(function(b){var a=b.dataset.calView===v;b.style.background=a?"#1B3A6B":"#fff";b.style.color=a?"#fff":"#1B3A6B";b.style.borderColor=a?"#1B3A6B":"#B8D0E8";});var grid=document.getElementById("calendar-grid");if(grid)grid.setAttribute("data-view",v);}
+function setCalView(v) {
+  window.__calState = window.__calState || {};
+  window.__calState.view = v;
+  document.querySelectorAll('.cal-view-btn').forEach(function(b) {
+    var active = b.dataset.calView === v;
+    b.classList.remove('btn-navy', 'btn-outline');
+    b.classList.add(active ? 'btn-navy' : 'btn-outline');
+    b.style.cssText = '';
+  });
+  var grid = document.getElementById('calendar-grid');
+  if (grid) grid.setAttribute('data-view', v);
+  if (typeof renderCalendarView === 'function') renderCalendarView(v);
+}
 
 // === AI Email template ===
 function customizeEmailAI(){
@@ -823,9 +835,9 @@ document.addEventListener("DOMContentLoaded",function(){
           <button class="btn btn-outline btn-sm" onclick="navigateCalendar(1)">Next →</button>
         </div>
         <div style="display:flex;gap:10px;">
-          <button class="btn btn-outline btn-sm" onclick="setCalView('day')" class="cal-view-btn" data-cal-view="day">Day</button>
-          <button class="btn btn-navy btn-sm" onclick="setCalView('week')" class="cal-view-btn" data-cal-view="week">Week</button>
-          <button class="btn btn-outline btn-sm" onclick="setCalView('month')" class="cal-view-btn" data-cal-view="month">Month</button>
+          <button class="btn btn-outline btn-sm cal-view-btn" onclick="setCalView('day')" data-cal-view="day">Day</button>
+          <button class="btn btn-navy btn-sm cal-view-btn" onclick="setCalView('week')" data-cal-view="week">Week</button>
+          <button class="btn btn-outline btn-sm cal-view-btn" onclick="setCalView('month')" data-cal-view="month">Month</button>
           <button class="btn btn-steel btn-sm" onclick="openBookAppointment()">+ Book Appointment</button>
         </div>
       </div>
@@ -1063,7 +1075,7 @@ document.addEventListener("DOMContentLoaded",function(){
       </div>
       <div class="two-col">
         <div class="card">
-          <div class="card-header"><h3>Monthly Appointments</h3><div style="display:flex;gap:8px;"><button class="btn btn-navy btn-sm" onclick="setCalView('month')" class="cal-view-btn" data-cal-view="month">Month</button><button class="btn btn-outline btn-sm">Quarter</button></div></div>
+          <div class="card-header"><h3>Monthly Appointments</h3><div style="display:flex;gap:8px;"><button class="btn btn-navy btn-sm">Month</button><button class="btn btn-outline btn-sm">Quarter</button></div></div>
           <div class="card-body">
             <div class="bar-chart">
               <div class="bar-group"><div class="bar-wrap"><div class="bar" style="height:55%;background:var(--steel);"></div></div><div class="bar-label">Oct</div></div>
@@ -1163,6 +1175,7 @@ function switchView(id, el) {
   document.getElementById('view-' + id).classList.add('active');
   if (el) el.classList.add('active');
   document.getElementById('page-title').textContent = titles[id] || id;
+  if (id === 'calendar') { setTimeout(function() { if (typeof setCalView === 'function') setCalView(window.__calState ? window.__calState.view : 'week'); }, 50); }
 }
 
 function showToast(msg) {
