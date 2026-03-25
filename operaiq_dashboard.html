@@ -189,6 +189,379 @@ textarea { resize: vertical; min-height: 80px; }
 .content::-webkit-scrollbar-thumb { background: var(--mist); border-radius: 3px; }
 </style>
 <script>
+
+// ============================================================
+// CALENDAR STATE
+// ============================================================
+window.__calState = window.__calState || {
+  currentDate: new Date(),
+  view: 'week',
+  appointments: [
+    { id:1, time:'8:00 AM', customer:'J. Harrison', service:'Pipe repair', employee:'D. Lee', date:'Today', address:'12 Maple St', priority:'High', status:'In Progress', type:'customer' },
+    { id:2, time:'10:30 AM', customer:'C. Martinez', service:'Boiler service', employee:'T. Kim', date:'Today', address:'45 Oak Ave', priority:'Normal', status:'En Route', type:'customer' },
+    { id:3, time:'12:00 PM', customer:'A. Patel', service:'Leak inspection', employee:'D. Lee', date:'Today', address:'88 Pine Rd', priority:'Normal', status:'Pending', type:'customer' },
+    { id:4, time:'3:30 PM', customer:'M. Wong', service:'Emergency repair', employee:'Unassigned', date:'Today', address:'7 Cedar Ln', priority:'Emergency', status:'Unassigned', type:'customer' }
+  ]
+};
+window.__newAppointments = window.__newAppointments || [];
+
+// ============================================================
+// 1. APPOINTMENT DETAIL MODAL
+// ============================================================
+function openApptDetail(el) {
+  var modal = document.getElementById('appt-detail-modal');
+  if (!modal) return;
+  var text = el.textContent.trim();
+  var appt = null;
+  var apps = window.__calState.appointments;
+  for (var i = 0; i < apps.length; i++) {
+    if (text.indexOf(apps[i].customer) > -1 || text.indexOf(apps[i].service) > -1) {
+      appt = apps[i];
+      break;
+    }
+  }
+  var titleEl = modal.querySelector('.ad-title');
+  var bodyEl = modal.querySelector('.ad-body');
+  if (titleEl) titleEl.textContent = appt ? appt.customer + ' — ' + appt.service : text.substring(0, 40);
+  if (bodyEl && appt) {
+    bodyEl.innerHTML =
+      '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;font-size:13px;">'
+      + '<div><span style="color:#8BA5C0;font-size:11px;font-weight:600;display:block;margin-bottom:3px;">TIME</span><strong>' + appt.time + '</strong></div>'
+      + '<div><span style="color:#8BA5C0;font-size:11px;font-weight:600;display:block;margin-bottom:3px;">DATE</span><strong>' + appt.date + '</strong></div>'
+      + '<div><span style="color:#8BA5C0;font-size:11px;font-weight:600;display:block;margin-bottom:3px;">CUSTOMER</span><strong>' + appt.customer + '</strong></div>'
+      + '<div><span style="color:#8BA5C0;font-size:11px;font-weight:600;display:block;margin-bottom:3px;">SERVICE</span><strong>' + appt.service + '</strong></div>'
+      + '<div><span style="color:#8BA5C0;font-size:11px;font-weight:600;display:block;margin-bottom:3px;">EMPLOYEE</span><strong>' + appt.employee + '</strong></div>'
+      + '<div><span style="color:#8BA5C0;font-size:11px;font-weight:600;display:block;margin-bottom:3px;">ADDRESS</span><strong>' + appt.address + '</strong></div>'
+      + '<div><span style="color:#8BA5C0;font-size:11px;font-weight:600;display:block;margin-bottom:3px;">PRIORITY</span>'
+      + '<span style="font-size:11px;font-weight:600;padding:3px 8px;border-radius:20px;background:#FFF3CD;color:#856404;">' + appt.priority + '</span></div>'
+      + '<div><span style="color:#8BA5C0;font-size:11px;font-weight:600;display:block;margin-bottom:3px;">STATUS</span>'
+      + '<span style="font-size:11px;font-weight:600;padding:3px 8px;border-radius:20px;background:#D4EDDA;color:#155724;">' + appt.status + '</span></div>'
+      + '</div>'
+      + '<div style="display:flex;gap:8px;margin-top:20px;">'
+      + '<button onclick="document.getElementById(\'appt-detail-modal\').style.display=\'none\'" style="flex:1;padding:10px;border:1.5px solid #B8D0E8;border-radius:8px;background:#fff;color:#1B3A6B;font-size:13px;font-weight:600;cursor:pointer;">Close</button>'
+      + '<button onclick="editApptFromDetail(' + appt.id + ')" style="flex:2;padding:10px;border:none;border-radius:8px;background:#1B3A6B;color:#fff;font-size:13px;font-weight:700;cursor:pointer;">&#x270F; Edit Appointment</button>'
+      + '</div>';
+  } else if (bodyEl) {
+    bodyEl.innerHTML = '<p style="color:#5B6F85;text-align:center;padding:20px;">' + text + '</p>'
+      + '<button onclick="document.getElementById(\'appt-detail-modal\').style.display=\'none\'" style="width:100%;padding:10px;border:1.5px solid #B8D0E8;border-radius:8px;background:#fff;color:#1B3A6B;font-size:13px;font-weight:600;cursor:pointer;margin-top:12px;">Close</button>';
+  }
+  modal.style.display = 'flex';
+}
+function editApptFromDetail(id) {
+  document.getElementById('appt-detail-modal').style.display = 'none';
+  openEditTask(null, id);
+}
+
+// ============================================================
+// 2. VIEW SWITCHING
+// ============================================================
+function setCalView(v) {
+  window.__calState.view = v;
+  var btns = document.querySelectorAll('.cal-view-btn');
+  for (var i = 0; i < btns.length; i++) {
+    var active = btns[i].dataset.calView === v;
+    btns[i].style.background = active ? '#1B3A6B' : '#fff';
+    btns[i].style.color = active ? '#fff' : '#1B3A6B';
+    btns[i].style.borderColor = active ? '#1B3A6B' : '#B8D0E8';
+  }
+  renderCalendarView(v);
+}
+function renderCalendarView(v) {
+  var grid = document.querySelector('.cal-grid');
+  if (!grid) return;
+  var d = window.__calState.currentDate;
+  var months = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+  var label = document.querySelector('.cal-month-label');
+  if (!label) label = document.querySelector('[class*="cal-title"]');
+  if (v === 'month') {
+    if (label) label.textContent = months[d.getMonth()] + ' ' + d.getFullYear();
+    renderMonthView(grid, d);
+  } else if (v === 'week') {
+    if (label) label.textContent = 'Week of ' + months[d.getMonth()] + ' ' + d.getDate() + ', ' + d.getFullYear();
+    renderWeekView(grid, d);
+  } else if (v === 'day') {
+    if (label) label.textContent = months[d.getMonth()] + ' ' + d.getDate() + ', ' + d.getFullYear();
+    renderDayView(grid, d);
+  }
+}
+function renderMonthView(grid, d) {
+  var months = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+  var firstDay = new Date(d.getFullYear(), d.getMonth(), 1).getDay();
+  var daysInMonth = new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate();
+  var today = new Date();
+  var html = '<div style="display:grid;grid-template-columns:repeat(7,1fr);gap:1px;background:#EBF3FA;border-radius:8px;overflow:hidden;">';
+  var dayNames = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+  for (var dn = 0; dn < 7; dn++) {
+    html += '<div style="background:#1B3A6B;color:#fff;text-align:center;padding:8px;font-size:12px;font-weight:600;">' + dayNames[dn] + '</div>';
+  }
+  for (var blank = 0; blank < firstDay; blank++) {
+    html += '<div style="background:#fff;padding:8px;min-height:80px;"></div>';
+  }
+  for (var day = 1; day <= daysInMonth; day++) {
+    var isToday = day === today.getDate() && d.getMonth() === today.getMonth() && d.getFullYear() === today.getFullYear();
+    html += '<div style="background:#fff;padding:8px;min-height:80px;' + (isToday ? 'border:2px solid #2E75B6;' : '') + '">';
+    html += '<div style="font-size:12px;font-weight:600;color:' + (isToday ? '#2E75B6' : '#1B3A6B') + ';">' + day + '</div>';
+    if (isToday) {
+      var apps = window.__calState.appointments;
+      for (var ai = 0; ai < apps.length; ai++) {
+        html += '<div class="cal-event appt" style="cursor:pointer;background:#EBF3FA;border-left:3px solid #2E75B6;border-radius:4px;padding:3px 5px;font-size:11px;margin-top:3px;" onclick="openApptDetail(this)">' + apps[ai].time + ' ' + apps[ai].customer + '</div>';
+      }
+    }
+    html += '</div>';
+  }
+  html += '</div>';
+  grid.innerHTML = html;
+}
+function renderWeekView(grid, d) {
+  var days = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+  var startOfWeek = new Date(d);
+  startOfWeek.setDate(d.getDate() - d.getDay());
+  var today = new Date();
+  var html = '<div style="display:grid;grid-template-columns:60px repeat(7,1fr);gap:1px;background:#EBF3FA;border-radius:8px;overflow:hidden;">';
+  html += '<div style="background:#1B3A6B;"></div>';
+  for (var di = 0; di < 7; di++) {
+    var dayDate = new Date(startOfWeek);
+    dayDate.setDate(startOfWeek.getDate() + di);
+    var isToday = dayDate.toDateString() === today.toDateString();
+    html += '<div style="background:' + (isToday ? '#2E75B6' : '#1B3A6B') + ';color:#fff;text-align:center;padding:8px;font-size:12px;font-weight:600;">' + days[di] + '<br><span style="font-size:14px;">' + dayDate.getDate() + '</span></div>';
+  }
+  for (var hour = 7; hour <= 19; hour++) {
+    var h12 = hour === 0 ? 12 : (hour > 12 ? hour - 12 : hour);
+    var ampm = hour < 12 ? 'AM' : 'PM';
+    if (hour === 12) { h12 = 12; ampm = 'PM'; }
+    var timeLabel = h12 + ':00 ' + ampm;
+    html += '<div style="background:#F5F8FB;text-align:right;padding:4px 6px;font-size:10px;color:#8BA5C0;border-top:1px solid #EBF3FA;">' + timeLabel + '</div>';
+    for (var col = 0; col < 7; col++) {
+      html += '<div style="background:#fff;min-height:48px;border-top:1px solid #EBF3FA;padding:2px;">';
+      var apps = window.__calState.appointments;
+      for (var ai2 = 0; ai2 < apps.length; ai2++) {
+        var apptHour = parseInt(apps[ai2].time);
+        var apptAMPM = apps[ai2].time.indexOf('PM') > -1 ? 'PM' : 'AM';
+        var apptHour24 = apptAMPM === 'PM' && apptHour !== 12 ? apptHour + 12 : (apptAMPM === 'AM' && apptHour === 12 ? 0 : apptHour);
+        if (apptHour24 === hour && col === today.getDay()) {
+          html += '<div class="cal-event appt" style="cursor:pointer;background:#EBF3FA;border-left:3px solid #2E75B6;border-radius:4px;padding:3px 5px;font-size:11px;" onclick="openApptDetail(this)">' + apps[ai2].customer + '</div>';
+        }
+      }
+      html += '</div>';
+    }
+  }
+  html += '</div>';
+  grid.innerHTML = html;
+}
+function renderDayView(grid, d) {
+  var html = '<div style="border-radius:8px;overflow:hidden;border:1px solid #EBF3FA;">';
+  for (var hour = 0; hour < 24; hour++) {
+    var h12 = hour === 0 ? 12 : (hour > 12 ? hour - 12 : hour);
+    var ampm = hour < 12 ? 'AM' : 'PM';
+    var timeLabel = h12 + ':00 ' + ampm;
+    html += '<div style="display:flex;border-top:1px solid #EBF3FA;min-height:52px;">';
+    html += '<div style="width:80px;padding:8px;font-size:11px;color:#8BA5C0;border-right:1px solid #EBF3FA;flex-shrink:0;">' + timeLabel + '</div>';
+    html += '<div style="flex:1;padding:4px;">';
+    var apps = window.__calState.appointments;
+    for (var ai3 = 0; ai3 < apps.length; ai3++) {
+      var apptH = parseInt(apps[ai3].time);
+      var apptAP = apps[ai3].time.indexOf('PM') > -1 ? 'PM' : 'AM';
+      var apptH24 = apptAP === 'PM' && apptH !== 12 ? apptH + 12 : (apptAP === 'AM' && apptH === 12 ? 0 : apptH);
+      if (apptH24 === hour) {
+        html += '<div class="cal-event appt" style="cursor:pointer;background:#EBF3FA;border-left:3px solid #2E75B6;border-radius:6px;padding:6px 10px;font-size:12px;margin-bottom:3px;" onclick="openApptDetail(this)">'
+          + '<strong>' + apps[ai3].customer + '</strong> &mdash; ' + apps[ai3].service
+          + '<br><span style="color:#8BA5C0;font-size:11px;">' + apps[ai3].employee + '</span></div>';
+      }
+    }
+    html += '</div></div>';
+  }
+  html += '</div>';
+  grid.innerHTML = html;
+}
+
+// ============================================================
+// 3. NAVIGATION
+// ============================================================
+function navigateCalendar(dir) {
+  var d = window.__calState.currentDate;
+  var v = window.__calState.view;
+  if (v === 'month') {
+    d.setMonth(d.getMonth() + dir);
+  } else if (v === 'week') {
+    d.setDate(d.getDate() + (dir * 7));
+  } else {
+    d.setDate(d.getDate() + dir);
+  }
+  window.__calState.currentDate = d;
+  renderCalendarView(v);
+}
+
+// ============================================================
+// 4. EXPORT
+// ============================================================
+function openExportModal() {
+  var m = document.getElementById('export-modal');
+  if (m) m.style.display = 'flex';
+}
+function doExport(format) {
+  var m = document.getElementById('export-modal');
+  if (m) m.style.display = 'none';
+  if (window.showToast) showToast('Exporting as ' + format.toUpperCase() + '...', 'success');
+  var rows = [['Time','Customer','Service','Employee','Status','Type']];
+  var apps = window.__calState.appointments;
+  for (var i = 0; i < apps.length; i++) {
+    rows.push([apps[i].time, apps[i].customer, apps[i].service, apps[i].employee, apps[i].status, apps[i].type]);
+  }
+  var newApps = window.__newAppointments || [];
+  for (var j = 0; j < newApps.length; j++) {
+    rows.push([newApps[j].time, newApps[j].customer || newApps[j].title || '', newApps[j].service || newApps[j].title || '', newApps[j].assignee || 'TBD', 'Scheduled', newApps[j].type || 'customer']);
+  }
+  if (format === 'csv' || format === 'xlsx') {
+    var csv = '';
+    for (var r = 0; r < rows.length; r++) {
+      csv += rows[r].map(function(c) { return '"' + c + '"'; }).join(',') + '\n';
+    }
+    var blob = new Blob([csv], { type: 'text/csv' });
+    var a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'operaiq-appointments.' + (format === 'xlsx' ? 'csv' : 'csv');
+    a.click();
+  } else if (format === 'pdf') {
+    var win = window.open('', '_blank');
+    var tableHTML = '<table><thead><tr>' + rows[0].map(function(h) { return '<th>' + h + '</th>'; }).join('') + '</tr></thead><tbody>';
+    for (var tr = 1; tr < rows.length; tr++) {
+      tableHTML += '<tr>' + rows[tr].map(function(c) { return '<td>' + c + '</td>'; }).join('') + '</tr>';
+    }
+    tableHTML += '</tbody></table>';
+    win.document.write('<html><head><title>OperaIQ Appointments</title><style>body{font-family:Arial;padding:20px;}h2{color:#1B3A6B;}table{width:100%;border-collapse:collapse;}th,td{border:1px solid #ccc;padding:8px;text-align:left;font-size:12px;}th{background:#1B3A6B;color:#fff;}</style></head><body><h2>OperaIQ &mdash; Active Appointments</h2>' + tableHTML + '</body></html>');
+    win.document.close();
+    win.print();
+  } else {
+    if (window.showToast) showToast('Use CSV or PDF for export. ' + format.toUpperCase() + ' coming soon.', 'info');
+  }
+}
+
+// ============================================================
+// 5. EDIT TASK
+// ============================================================
+function openEditTask(btn, id) {
+  var modal = document.getElementById('edit-task-modal');
+  if (!modal) return;
+  var row = btn ? btn.closest('tr') : null;
+  var found = null;
+  if (id) {
+    var apps = window.__calState.appointments;
+    for (var i = 0; i < apps.length; i++) {
+      if (apps[i].id === id) { found = apps[i]; break; }
+    }
+  }
+  if (!found && row) {
+    var cells = row.querySelectorAll('td');
+    found = {
+      employee: cells[0] ? cells[0].textContent.trim() : '',
+      customer: cells[1] ? cells[1].textContent.trim() : '',
+      service: cells[2] ? cells[2].textContent.trim() : '',
+      address: cells[4] ? cells[4].textContent.trim() : '',
+      priority: cells[5] ? cells[5].textContent.trim() : 'Normal',
+      status: cells[6] ? cells[6].textContent.trim() : 'Pending'
+    };
+    modal.dataset.rowRef = Array.from(row.closest('tbody').rows).indexOf(row);
+  } else {
+    modal.dataset.rowRef = -1;
+  }
+  if (found) {
+    var etEmployee = document.getElementById('et-employee');
+    var etCustomer = document.getElementById('et-customer');
+    var etService = document.getElementById('et-service');
+    var etAddress = document.getElementById('et-address');
+    var etPriority = document.getElementById('et-priority');
+    var etStatus = document.getElementById('et-status');
+    if (etEmployee) etEmployee.value = found.employee || '';
+    if (etCustomer) etCustomer.value = found.customer || '';
+    if (etService) etService.value = found.service || '';
+    if (etAddress) etAddress.value = found.address || '';
+    if (etPriority) etPriority.value = found.priority || 'Normal';
+    if (etStatus) etStatus.value = found.status || 'Pending';
+    modal.dataset.apptId = found.id || '';
+  }
+  modal.style.display = 'flex';
+}
+function saveEditTask() {
+  var modal = document.getElementById('edit-task-modal');
+  var rowIdx = parseInt(modal.dataset.rowRef);
+  if (rowIdx >= 0) {
+    var tbodies = document.querySelectorAll('table tbody');
+    var tbody = tbodies[tbodies.length - 1];
+    if (tbody && tbody.rows[rowIdx]) {
+      var cells = tbody.rows[rowIdx].querySelectorAll('td');
+      var etEmployee = document.getElementById('et-employee');
+      var etCustomer = document.getElementById('et-customer');
+      var etService = document.getElementById('et-service');
+      var etAddress = document.getElementById('et-address');
+      var etStatus = document.getElementById('et-status');
+      if (cells[0] && etEmployee) cells[0].innerHTML = '<strong>' + etEmployee.value + '</strong>';
+      if (cells[1] && etCustomer) cells[1].textContent = etCustomer.value;
+      if (cells[2] && etService) cells[2].textContent = etService.value;
+      if (cells[4] && etAddress) cells[4].textContent = etAddress.value;
+      if (cells[6] && etStatus) cells[6].innerHTML = '<span style="font-size:11px;font-weight:600;padding:3px 8px;border-radius:20px;background:#D4EDDA;color:#155724;">' + etStatus.value + '</span>';
+    }
+  }
+  modal.style.display = 'none';
+  if (window.showToast) showToast('Task updated successfully', 'success');
+}
+
+// ============================================================
+// 6. AUTO-ASSIGN
+// ============================================================
+function autoAssignTask(btn) {
+  var row = btn.closest('tr');
+  if (!row) return;
+  var cells = row.querySelectorAll('td');
+  if (cells[0]) cells[0].innerHTML = '<strong>R. Brooks</strong>';
+  if (cells[6]) cells[6].innerHTML = '<span style="font-size:11px;font-weight:600;padding:3px 8px;border-radius:20px;background:#D4EDDA;color:#155724;">Assigned</span>';
+  var lastCell = cells[cells.length - 1];
+  if (lastCell) lastCell.innerHTML = '<button class="btn btn-ghost btn-sm" onclick="openEditTask(this)">Edit</button>';
+  if (window.showToast) showToast('R. Brooks auto-assigned to task', 'success');
+}
+
+// ============================================================
+// 8. ADD TO ACTIVE TASKS (called from Book/New appointment)
+// ============================================================
+function addToActiveTasks(appt) {
+  window.__newAppointments = window.__newAppointments || [];
+  window.__newAppointments.push(appt);
+  var tbodies = document.querySelectorAll('table tbody');
+  var tbody = tbodies.length > 0 ? tbodies[tbodies.length - 1] : null;
+  if (!tbody) return;
+  var row = document.createElement('tr');
+  var timeStr = appt.time || '--';
+  var typeBadge = appt.type === 'internal'
+    ? '<span style="font-size:11px;font-weight:600;padding:3px 8px;border-radius:20px;background:#F3E8FF;color:#6B3A8B;">Internal</span>'
+    : '<span style="font-size:11px;font-weight:600;padding:3px 8px;border-radius:20px;background:#EBF3FA;color:#2E75B6;">Customer</span>';
+  var customerName = appt.customer || appt.title || '';
+  var serviceName = appt.service || appt.title || '';
+  var assigneeName = appt.assignee || 'Unassigned';
+  row.innerHTML = '<td><strong>' + assigneeName + '</strong></td>'
+    + '<td>' + customerName + '</td>'
+    + '<td>' + serviceName + '</td>'
+    + '<td>' + appt.date + ', ' + timeStr + '</td>'
+    + '<td>' + (appt.address || '--') + '</td>'
+    + '<td><span style="font-size:11px;font-weight:600;padding:3px 8px;border-radius:20px;background:#EBF3FA;color:#2E75B6;">Normal</span></td>'
+    + '<td><span style="font-size:11px;font-weight:600;padding:3px 8px;border-radius:20px;background:#D4EDDA;color:#155724;">Scheduled</span></td>'
+    + '<td>' + typeBadge + '</td>'
+    + '<td><button class="btn btn-ghost btn-sm" onclick="openEditTask(this)">Edit</button></td>';
+  tbody.insertBefore(row, tbody.firstChild);
+  window.__calState.appointments.push({
+    id: Date.now(),
+    time: timeStr,
+    customer: customerName,
+    service: serviceName,
+    employee: assigneeName,
+    date: appt.date,
+    address: appt.address || '--',
+    priority: 'Normal',
+    status: 'Scheduled',
+    type: appt.type || 'customer'
+  });
+}
+
+</script>
+<script>
 // === Google Maps ===
 function loadGoogleMaps(){if(typeof google!=="undefined"){initEmployeeMap();return;}var s=document.createElement("script");var key=(window.CONFIG&&window.CONFIG.GOOGLE_MAPS_API_KEY)||window.GMAPS_KEY||"";s.src="https://maps.googleapis.com/maps/api/js?key="+key+"&callback=initEmployeeMap&libraries=places";s.async=true;s.defer=true;document.head.appendChild(s);}
 function initEmployeeMap(){var c=document.getElementById("employee-map-canvas");if(!c)return;var map=new google.maps.Map(c,{center:{lat:40.7128,lng:-74.006},zoom:11});var emps=[{name:"D. Lee",lat:40.7282,lng:-73.9942,status:"On job",color:"#2E75B6"},{name:"T. Kim",lat:40.6892,lng:-74.0445,status:"En route",color:"#B8860B"},{name:"R. Brooks",lat:40.7489,lng:-73.968,status:"Available",color:"#2E8B57"}];emps.forEach(function(e){var m=new google.maps.Marker({position:{lat:e.lat,lng:e.lng},map:map,title:e.name,label:{text:e.name[0]+e.name.split(" ")[1][0],color:"#fff",fontWeight:"700",fontSize:"11px"},icon:{path:google.maps.SymbolPath.CIRCLE,scale:18,fillColor:e.color,fillOpacity:1,strokeColor:"#fff",strokeWeight:2}});var info=new google.maps.InfoWindow({content:"<div style='font-size:13px;padding:6px;'><strong>"+e.name+"</strong><br>"+e.status+"</div>"});m.addListener("click",function(){info.open(map,m);});});}
@@ -445,9 +818,9 @@ document.addEventListener("DOMContentLoaded",function(){
     <div class="view" id="view-calendar">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
         <div style="display:flex;align-items:center;gap:16px;">
-          <button class="btn btn-outline btn-sm">← Prev</button>
+          <button class="btn btn-outline btn-sm" onclick="navigateCalendar(-1)">← Prev</button>
           <h2 style="font-family:'Cormorant Garamond',serif;font-size:24px;font-weight:700;color:var(--navy)">March 2026</h2>
-          <button class="btn btn-outline btn-sm">Next →</button>
+          <button class="btn btn-outline btn-sm" onclick="navigateCalendar(1)">Next →</button>
         </div>
         <div style="display:flex;gap:10px;">
           <button class="btn btn-outline btn-sm" onclick="setCalView('day')" class="cal-view-btn" data-cal-view="day">Day</button>
@@ -468,31 +841,31 @@ document.addEventListener("DOMContentLoaded",function(){
             <div class="cal-cell other-month"><div class="cal-date">27</div></div>
             <div class="cal-cell other-month"><div class="cal-date">28</div></div>
             <div class="cal-cell"><div class="cal-date">1</div></div>
-            <div class="cal-cell"><div class="cal-date">2</div><div class="cal-event appt">J. Harrison 8am</div></div>
-            <div class="cal-cell"><div class="cal-date">3</div><div class="cal-event call">Inbound call</div></div>
+            <div class="cal-cell"><div class="cal-date">2</div><div class="cal-event appt" style="cursor:pointer;" onclick="openApptDetail(this)">J. Harrison 8am</div></div>
+            <div class="cal-cell"><div class="cal-date">3</div><div class="cal-event call" style="cursor:pointer;" onclick="openApptDetail(this)">Inbound call</div></div>
             <div class="cal-cell"><div class="cal-date">4</div></div>
-            <div class="cal-cell"><div class="cal-date">5</div><div class="cal-event appt">3 appointments</div></div>
-            <div class="cal-cell"><div class="cal-date">6</div><div class="cal-event task">Team briefing</div></div>
+            <div class="cal-cell"><div class="cal-date">5</div><div class="cal-event appt" style="cursor:pointer;" onclick="openApptDetail(this)">3 appointments</div></div>
+            <div class="cal-cell"><div class="cal-date">6</div><div class="cal-event task" style="cursor:pointer;" onclick="openApptDetail(this)">Team briefing</div></div>
             <div class="cal-cell"><div class="cal-date">7</div></div>
-            <div class="cal-cell"><div class="cal-date">8</div><div class="cal-event appt">C. Martinez 10:30am</div></div>
-            <div class="cal-cell"><div class="cal-date">9</div><div class="cal-event call">2 calls</div></div>
-            <div class="cal-cell"><div class="cal-date">10</div><div class="cal-event appt">A. Patel 12pm</div></div>
-            <div class="cal-cell"><div class="cal-date">11</div><div class="cal-event appt">2 appointments</div></div>
-            <div class="cal-cell"><div class="cal-date">12</div><div class="cal-event task">Invoice batch</div></div>
-            <div class="cal-cell"><div class="cal-date">13</div><div class="cal-event appt">4 appointments</div></div>
+            <div class="cal-cell"><div class="cal-date">8</div><div class="cal-event appt" style="cursor:pointer;" onclick="openApptDetail(this)">C. Martinez 10:30am</div></div>
+            <div class="cal-cell"><div class="cal-date">9</div><div class="cal-event call" style="cursor:pointer;" onclick="openApptDetail(this)">2 calls</div></div>
+            <div class="cal-cell"><div class="cal-date">10</div><div class="cal-event appt" style="cursor:pointer;" onclick="openApptDetail(this)">A. Patel 12pm</div></div>
+            <div class="cal-cell"><div class="cal-date">11</div><div class="cal-event appt" style="cursor:pointer;" onclick="openApptDetail(this)">2 appointments</div></div>
+            <div class="cal-cell"><div class="cal-date">12</div><div class="cal-event task" style="cursor:pointer;" onclick="openApptDetail(this)">Invoice batch</div></div>
+            <div class="cal-cell"><div class="cal-date">13</div><div class="cal-event appt" style="cursor:pointer;" onclick="openApptDetail(this)">4 appointments</div></div>
             <div class="cal-cell"><div class="cal-date">14</div></div>
-            <div class="cal-cell"><div class="cal-date">15</div><div class="cal-event appt">M. Wong 9am</div></div>
-            <div class="cal-cell today"><div class="cal-date">16</div><div class="cal-event appt">6 today</div><div class="cal-event call">AI: 2 calls</div></div>
-            <div class="cal-cell"><div class="cal-date">17</div><div class="cal-event appt">Water heater install</div></div>
-            <div class="cal-cell"><div class="cal-date">18</div><div class="cal-event appt">3 appointments</div></div>
-            <div class="cal-cell"><div class="cal-date">19</div><div class="cal-event task">Team reviews</div></div>
+            <div class="cal-cell"><div class="cal-date">15</div><div class="cal-event appt" style="cursor:pointer;" onclick="openApptDetail(this)">M. Wong 9am</div></div>
+            <div class="cal-cell today"><div class="cal-date">16</div><div class="cal-event appt" style="cursor:pointer;" onclick="openApptDetail(this)">6 today</div><div class="cal-event call" style="cursor:pointer;" onclick="openApptDetail(this)">AI: 2 calls</div></div>
+            <div class="cal-cell"><div class="cal-date">17</div><div class="cal-event appt" style="cursor:pointer;" onclick="openApptDetail(this)">Water heater install</div></div>
+            <div class="cal-cell"><div class="cal-date">18</div><div class="cal-event appt" style="cursor:pointer;" onclick="openApptDetail(this)">3 appointments</div></div>
+            <div class="cal-cell"><div class="cal-date">19</div><div class="cal-event task" style="cursor:pointer;" onclick="openApptDetail(this)">Team reviews</div></div>
             <div class="cal-cell"><div class="cal-date">20</div></div>
             <div class="cal-cell"><div class="cal-date">21</div></div>
-            <div class="cal-cell"><div class="cal-date">22</div><div class="cal-event appt">2 appointments</div></div>
+            <div class="cal-cell"><div class="cal-date">22</div><div class="cal-event appt" style="cursor:pointer;" onclick="openApptDetail(this)">2 appointments</div></div>
             <div class="cal-cell"><div class="cal-date">23</div></div>
             <div class="cal-cell"><div class="cal-date">24</div></div>
-            <div class="cal-cell"><div class="cal-date">25</div><div class="cal-event appt">R. Johnson est.</div></div>
-            <div class="cal-cell"><div class="cal-date">26</div><div class="cal-event appt">3 appointments</div></div>
+            <div class="cal-cell"><div class="cal-date">25</div><div class="cal-event appt" style="cursor:pointer;" onclick="openApptDetail(this)">R. Johnson est.</div></div>
+            <div class="cal-cell"><div class="cal-date">26</div><div class="cal-event appt" style="cursor:pointer;" onclick="openApptDetail(this)">3 appointments</div></div>
             <div class="cal-cell"><div class="cal-date">27</div></div>
             <div class="cal-cell"><div class="cal-date">28</div></div>
           </div>
@@ -531,15 +904,15 @@ document.addEventListener("DOMContentLoaded",function(){
         </div>
       </div>
       <div class="card">
-        <div class="card-header"><h3>All Active Tasks</h3><button class="btn btn-outline btn-sm">Export</button></div>
+        <div class="card-header"><h3>All Active Tasks</h3><button class="btn btn-outline btn-sm" onclick="openExportModal()">Export</button></div>
         <div class="card-body" style="padding:0;">
           <table>
-            <thead><tr><th>Employee</th><th>Customer</th><th>Service</th><th>Date & Time</th><th>Address</th><th>Priority</th><th>Status</th><th>Actions</th></tr></thead>
+            <thead><tr><th>Employee</th><th>Customer</th><th>Service</th><th>Date & Time</th><th>Address</th><th>Priority</th><th>Status</th><th>Type</th><th>Actions</th></tr></thead>
             <tbody>
-              <tr><td><strong>D. Lee</strong></td><td>J. Harrison</td><td>Pipe repair</td><td>Today, 8:00 AM</td><td>12 Maple St</td><td><span class="pill pill-amber">High</span></td><td><span class="pill pill-green">In Progress</span></td><td><button class="btn btn-ghost btn-sm">Edit</button></td></tr>
-              <tr><td><strong>T. Kim</strong></td><td>C. Martinez</td><td>Boiler service</td><td>Today, 10:30 AM</td><td>45 Oak Ave</td><td><span class="pill pill-gray">Normal</span></td><td><span class="pill pill-blue">En Route</span></td><td><button class="btn btn-ghost btn-sm">Edit</button></td></tr>
-              <tr><td><strong>D. Lee</strong></td><td>A. Patel</td><td>Leak inspection</td><td>Today, 12:00 PM</td><td>88 Pine Rd</td><td><span class="pill pill-gray">Normal</span></td><td><span class="pill pill-amber">Pending</span></td><td><button class="btn btn-ghost btn-sm">Edit</button></td></tr>
-              <tr><td><strong>Unassigned</strong></td><td>M. Wong</td><td>Emergency repair</td><td>Today, 3:30 PM</td><td>7 Cedar Ln</td><td><span class="pill pill-red">Emergency</span></td><td><span class="pill pill-red">Unassigned</span></td><td><button class="btn btn-steel btn-sm" onclick="showToast('R. Brooks auto-assigned!')">Auto-Assign</button></td></tr>
+              <tr><td><strong>D. Lee</strong></td><td>J. Harrison</td><td>Pipe repair</td><td>Today, 8:00 AM</td><td>12 Maple St</td><td><span class="pill pill-amber">High</span></td><td><span class="pill pill-green">In Progress</span></td><td><span style="font-size:11px;font-weight:600;padding:3px 8px;border-radius:20px;background:#EBF3FA;color:#2E75B6;">Customer</span></td><td><button class="btn btn-ghost btn-sm" onclick="openEditTask(this)">Edit</button></td></tr>
+              <tr><td><strong>T. Kim</strong></td><td>C. Martinez</td><td>Boiler service</td><td>Today, 10:30 AM</td><td>45 Oak Ave</td><td><span class="pill pill-gray">Normal</span></td><td><span class="pill pill-blue">En Route</span></td><td><span style="font-size:11px;font-weight:600;padding:3px 8px;border-radius:20px;background:#EBF3FA;color:#2E75B6;">Customer</span></td><td><button class="btn btn-ghost btn-sm" onclick="openEditTask(this)">Edit</button></td></tr>
+              <tr><td><strong>D. Lee</strong></td><td>A. Patel</td><td>Leak inspection</td><td>Today, 12:00 PM</td><td>88 Pine Rd</td><td><span class="pill pill-gray">Normal</span></td><td><span class="pill pill-amber">Pending</span></td><td><span style="font-size:11px;font-weight:600;padding:3px 8px;border-radius:20px;background:#EBF3FA;color:#2E75B6;">Customer</span></td><td><button class="btn btn-ghost btn-sm" onclick="openEditTask(this)">Edit</button></td></tr>
+              <tr><td><strong>Unassigned</strong></td><td>M. Wong</td><td>Emergency repair</td><td>Today, 3:30 PM</td><td>7 Cedar Ln</td><td><span class="pill pill-red">Emergency</span></td><td><span class="pill pill-red">Unassigned</span></td><td><span style="font-size:11px;font-weight:600;padding:3px 8px;border-radius:20px;background:#EBF3FA;color:#2E75B6;">Customer</span></td><td><button class="btn btn-steel btn-sm" onclick="autoAssignTask(this)">Auto-Assign</button></td></tr>
             </tbody>
           </table>
         </div>
@@ -806,8 +1179,8 @@ function showToast(msg) {
 </script>
 <div id="tile-breakdown-modal" style="display:none;position:fixed;inset:0;background:rgba(27,58,107,.55);z-index:9999;align-items:center;justify-content:center;"><div style="background:#fff;border-radius:16px;padding:32px;max-width:560px;width:90%;max-height:80vh;overflow-y:auto;box-shadow:0 20px 60px rgba(27,58,107,.25);"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;"><h3 class="tb-title" style="color:#1B3A6B;font-size:18px;font-weight:700;margin:0;"></h3><button onclick="document.getElementById('tile-breakdown-modal').style.display='none'" style="background:none;border:none;font-size:26px;cursor:pointer;color:#B8D0E8;">&times;</button></div><div class="tb-body"></div></div></div><div id="month-detail-modal" style="display:none;position:fixed;inset:0;background:rgba(27,58,107,.55);z-index:9998;align-items:center;justify-content:center;"><div style="background:#fff;border-radius:16px;padding:32px;max-width:680px;width:92%;max-height:82vh;overflow-y:auto;box-shadow:0 20px 60px rgba(27,58,107,.25);"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;"><h3 class="md-title" style="color:#1B3A6B;font-size:18px;font-weight:700;margin:0;"></h3><button onclick="document.getElementById('month-detail-modal').style.display='none'" style="background:none;border:none;font-size:26px;cursor:pointer;color:#B8D0E8;">&times;</button></div><div class="md-body"></div></div></div>
 
-<div id="book-appt-modal" style="display:none;position:fixed;inset:0;background:rgba(27,58,107,.55);z-index:9999;align-items:center;justify-content:center;overflow-y:auto;"><div style="background:#fff;border-radius:16px;padding:32px;max-width:560px;width:92%;margin:20px auto;box-shadow:0 20px 60px rgba(27,58,107,.25);"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:24px;"><h3 style="color:#1B3A6B;font-size:20px;font-weight:700;margin:0;">&#x1F4C5; Book Appointment</h3><button onclick="document.getElementById('book-appt-modal').style.display='none'" style="background:none;border:none;font-size:26px;cursor:pointer;color:#B8D0E8;">&times;</button></div><div style="display:flex;flex-direction:column;gap:14px;"><div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;"><div><label style="font-size:12px;font-weight:600;color:#1B3A6B;display:block;margin-bottom:5px;">First Name *</label><input id="book-first-name" type="text" placeholder="John" style="width:100%;padding:10px;border:1px solid #B8D0E8;border-radius:8px;font-size:14px;box-sizing:border-box;"></div><div><label style="font-size:12px;font-weight:600;color:#1B3A6B;display:block;margin-bottom:5px;">Last Name *</label><input id="book-last-name" type="text" placeholder="Smith" style="width:100%;padding:10px;border:1px solid #B8D0E8;border-radius:8px;font-size:14px;box-sizing:border-box;"></div></div><div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;"><div><label style="font-size:12px;font-weight:600;color:#1B3A6B;display:block;margin-bottom:5px;">Phone *</label><input id="book-phone" type="tel" placeholder="(401) 555-0100" style="width:100%;padding:10px;border:1px solid #B8D0E8;border-radius:8px;font-size:14px;box-sizing:border-box;"></div><div><label style="font-size:12px;font-weight:600;color:#1B3A6B;display:block;margin-bottom:5px;">Email</label><input id="book-email" type="email" placeholder="john@email.com" style="width:100%;padding:10px;border:1px solid #B8D0E8;border-radius:8px;font-size:14px;box-sizing:border-box;"></div></div><div><label style="font-size:12px;font-weight:600;color:#1B3A6B;display:block;margin-bottom:5px;">Service *</label><input id="book-service" type="text" placeholder="e.g. Consultation, Inspection, Installation..." style="width:100%;padding:10px;border:1px solid #B8D0E8;border-radius:8px;font-size:14px;box-sizing:border-box;"></div><div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;"><div><label style="font-size:12px;font-weight:600;color:#1B3A6B;display:block;margin-bottom:5px;">Date *</label><input id="book-date" type="date" style="width:100%;padding:10px;border:1px solid #B8D0E8;border-radius:8px;font-size:14px;box-sizing:border-box;"></div><div><label style="font-size:12px;font-weight:600;color:#1B3A6B;display:block;margin-bottom:5px;">Time *</label><select id="book-time" style="width:100%;padding:10px;border:1px solid #B8D0E8;border-radius:8px;font-size:14px;box-sizing:border-box;"><option value="">Select time...</option><option>8:00 AM</option><option>8:30 AM</option><option>9:00 AM</option><option>9:30 AM</option><option>10:00 AM</option><option>10:30 AM</option><option>11:00 AM</option><option>11:30 AM</option><option>12:00 PM</option><option>12:30 PM</option><option>1:00 PM</option><option>1:30 PM</option><option>2:00 PM</option><option>2:30 PM</option><option>3:00 PM</option><option>3:30 PM</option><option>4:00 PM</option><option>4:30 PM</option><option>5:00 PM</option></select></div></div><div><label style="font-size:12px;font-weight:600;color:#1B3A6B;display:block;margin-bottom:5px;">Reminder Preference</label><select id="book-reminder" style="width:100%;padding:10px;border:1px solid #B8D0E8;border-radius:8px;font-size:14px;box-sizing:border-box;"><option value="both">SMS &amp; Email</option><option value="sms">SMS only</option><option value="email">Email only</option><option value="none">No reminders</option></select></div><div><label style="font-size:12px;font-weight:600;color:#1B3A6B;display:block;margin-bottom:5px;">Notes</label><textarea id="book-notes" placeholder="Any additional details..." rows="3" style="width:100%;padding:10px;border:1px solid #B8D0E8;border-radius:8px;font-size:14px;resize:vertical;box-sizing:border-box;"></textarea></div><div style="display:flex;gap:12px;margin-top:8px;"><button onclick="document.getElementById('book-appt-modal').style.display='none'" style="flex:1;padding:12px;border:1.5px solid #B8D0E8;border-radius:8px;background:#fff;color:#1B3A6B;font-size:14px;font-weight:600;cursor:pointer;">Cancel</button><button onclick="confirmBookAppointment()" style="flex:2;padding:12px;border:none;border-radius:8px;background:#1B3A6B;color:#fff;font-size:14px;font-weight:700;cursor:pointer;">&#x2713; Confirm Booking</button></div></div></div></div>
-<div id="new-appt-modal" style="display:none;position:fixed;inset:0;background:rgba(27,58,107,.55);z-index:9999;align-items:center;justify-content:center;overflow-y:auto;"><div style="background:#fff;border-radius:16px;padding:32px;max-width:560px;width:92%;margin:20px auto;box-shadow:0 20px 60px rgba(27,58,107,.25);"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;"><h3 style="color:#1B3A6B;font-size:20px;font-weight:700;margin:0;">&#x1F4C6; New Appointment</h3><button onclick="document.getElementById('new-appt-modal').style.display='none'" style="background:none;border:none;font-size:26px;cursor:pointer;color:#B8D0E8;">&times;</button></div><div style="display:flex;gap:0;border:1.5px solid #B8D0E8;border-radius:8px;overflow:hidden;margin-bottom:20px;"><button id="new-type-customer" onclick="setNewApptType('customer')" style="flex:1;padding:10px;border:none;background:#1B3A6B;color:#fff;font-size:13px;font-weight:600;cursor:pointer;">&#x1F464; Customer Appointment</button><button id="new-type-internal" onclick="setNewApptType('internal')" style="flex:1;padding:10px;border:none;background:#fff;color:#1B3A6B;font-size:13px;font-weight:600;cursor:pointer;">&#x1F465; Internal Meeting</button></div><div id="new-appt-type-label" style="font-size:11px;font-weight:600;letter-spacing:2px;text-transform:uppercase;color:#2E75B6;margin-bottom:14px;">Customer Appointment</div><div style="display:flex;flex-direction:column;gap:14px;"><div id="new-customer-field"><label style="font-size:12px;font-weight:600;color:#1B3A6B;display:block;margin-bottom:5px;">Customer Name *</label><input id="new-customer-name" type="text" placeholder="Full name" style="width:100%;padding:10px;border:1px solid #B8D0E8;border-radius:8px;font-size:14px;box-sizing:border-box;"></div><div><label style="font-size:12px;font-weight:600;color:#1B3A6B;display:block;margin-bottom:5px;">Title / Service *</label><input id="new-appt-title" type="text" placeholder="e.g. Roof Inspection, Team Standup..." style="width:100%;padding:10px;border:1px solid #B8D0E8;border-radius:8px;font-size:14px;box-sizing:border-box;"></div><div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;"><div><label style="font-size:12px;font-weight:600;color:#1B3A6B;display:block;margin-bottom:5px;">Date *</label><input id="new-appt-date" type="date" style="width:100%;padding:10px;border:1px solid #B8D0E8;border-radius:8px;font-size:14px;box-sizing:border-box;"></div><div><label style="font-size:12px;font-weight:600;color:#1B3A6B;display:block;margin-bottom:5px;">Time *</label><select id="new-appt-time" style="width:100%;padding:10px;border:1px solid #B8D0E8;border-radius:8px;font-size:14px;box-sizing:border-box;"><option value="">Select time...</option><option>8:00 AM</option><option>8:30 AM</option><option>9:00 AM</option><option>9:30 AM</option><option>10:00 AM</option><option>10:30 AM</option><option>11:00 AM</option><option>11:30 AM</option><option>12:00 PM</option><option>12:30 PM</option><option>1:00 PM</option><option>1:30 PM</option><option>2:00 PM</option><option>2:30 PM</option><option>3:00 PM</option><option>3:30 PM</option><option>4:00 PM</option><option>4:30 PM</option><option>5:00 PM</option></select></div></div><div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;"><div><label style="font-size:12px;font-weight:600;color:#1B3A6B;display:block;margin-bottom:5px;">Duration</label><select id="new-appt-duration" style="width:100%;padding:10px;border:1px solid #B8D0E8;border-radius:8px;font-size:14px;box-sizing:border-box;"><option value="30">30 minutes</option><option value="60" selected>1 hour</option><option value="90">1.5 hours</option><option value="120">2 hours</option><option value="180">3 hours</option><option value="240">4 hours</option></select></div><div><label style="font-size:12px;font-weight:600;color:#1B3A6B;display:block;margin-bottom:5px;">Assigned To</label><select id="new-appt-assignee" style="width:100%;padding:10px;border:1px solid #B8D0E8;border-radius:8px;font-size:14px;box-sizing:border-box;"><option value="unassigned">&#x2014; Unassigned &#x2014;</option><option>D. Lee</option><option>T. Kim</option><option>R. Brooks</option></select></div></div><div><label style="font-size:12px;font-weight:600;color:#1B3A6B;display:block;margin-bottom:5px;">Notes</label><textarea id="new-appt-notes" placeholder="Any details or special instructions..." rows="3" style="width:100%;padding:10px;border:1px solid #B8D0E8;border-radius:8px;font-size:14px;resize:vertical;box-sizing:border-box;"></textarea></div><div style="display:flex;gap:12px;margin-top:8px;"><button onclick="document.getElementById('new-appt-modal').style.display='none'" style="flex:1;padding:12px;border:1.5px solid #B8D0E8;border-radius:8px;background:#fff;color:#1B3A6B;font-size:14px;font-weight:600;cursor:pointer;">Cancel</button><button onclick="confirmNewAppointment()" style="flex:2;padding:12px;border:none;border-radius:8px;background:#1B3A6B;color:#fff;font-size:14px;font-weight:700;cursor:pointer;">&#x2713; Add to Calendar</button></div></div></div></div>
+<div id="book-appt-modal" style="display:none;position:fixed;inset:0;background:rgba(27,58,107,.55);z-index:9999;align-items:center;justify-content:center;overflow-y:auto;"><div style="background:#fff;border-radius:16px;padding:32px;max-width:560px;width:92%;margin:20px auto;box-shadow:0 20px 60px rgba(27,58,107,.25);"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:24px;"><h3 style="color:#1B3A6B;font-size:20px;font-weight:700;margin:0;">&#x1F4C5; Book Appointment</h3><button onclick="document.getElementById('book-appt-modal').style.display='none'" style="background:none;border:none;font-size:26px;cursor:pointer;color:#B8D0E8;">&times;</button></div><div style="display:flex;flex-direction:column;gap:14px;"><div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;"><div><label style="font-size:12px;font-weight:600;color:#1B3A6B;display:block;margin-bottom:5px;">First Name *</label><input id="book-first-name" type="text" placeholder="John" style="width:100%;padding:10px;border:1px solid #B8D0E8;border-radius:8px;font-size:14px;box-sizing:border-box;"></div><div><label style="font-size:12px;font-weight:600;color:#1B3A6B;display:block;margin-bottom:5px;">Last Name *</label><input id="book-last-name" type="text" placeholder="Smith" style="width:100%;padding:10px;border:1px solid #B8D0E8;border-radius:8px;font-size:14px;box-sizing:border-box;"></div></div><div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;"><div><label style="font-size:12px;font-weight:600;color:#1B3A6B;display:block;margin-bottom:5px;">Phone *</label><input id="book-phone" type="tel" placeholder="(401) 555-0100" style="width:100%;padding:10px;border:1px solid #B8D0E8;border-radius:8px;font-size:14px;box-sizing:border-box;"></div><div><label style="font-size:12px;font-weight:600;color:#1B3A6B;display:block;margin-bottom:5px;">Email</label><input id="book-email" type="email" placeholder="john@email.com" style="width:100%;padding:10px;border:1px solid #B8D0E8;border-radius:8px;font-size:14px;box-sizing:border-box;"></div></div><div><label style="font-size:12px;font-weight:600;color:#1B3A6B;display:block;margin-bottom:5px;">Service *</label><input id="book-service" type="text" placeholder="e.g. Consultation, Inspection, Installation..." style="width:100%;padding:10px;border:1px solid #B8D0E8;border-radius:8px;font-size:14px;box-sizing:border-box;"></div><div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;"><div><label style="font-size:12px;font-weight:600;color:#1B3A6B;display:block;margin-bottom:5px;">Date *</label><input id="book-date" type="date" style="width:100%;padding:10px;border:1px solid #B8D0E8;border-radius:8px;font-size:14px;box-sizing:border-box;"></div><div><label style="font-size:12px;font-weight:600;color:#1B3A6B;display:block;margin-bottom:5px;">Time *</label><select id="book-time" style="width:100%;padding:10px;border:1px solid #B8D0E8;border-radius:8px;font-size:14px;box-sizing:border-box;"><option value="">Select time...</option><option>12:00 AM</option><option>12:05 AM</option><option>12:10 AM</option><option>12:15 AM</option><option>12:20 AM</option><option>12:25 AM</option><option>12:30 AM</option><option>12:35 AM</option><option>12:40 AM</option><option>12:45 AM</option><option>12:50 AM</option><option>12:55 AM</option><option>1:00 AM</option><option>1:05 AM</option><option>1:10 AM</option><option>1:15 AM</option><option>1:20 AM</option><option>1:25 AM</option><option>1:30 AM</option><option>1:35 AM</option><option>1:40 AM</option><option>1:45 AM</option><option>1:50 AM</option><option>1:55 AM</option><option>2:00 AM</option><option>2:05 AM</option><option>2:10 AM</option><option>2:15 AM</option><option>2:20 AM</option><option>2:25 AM</option><option>2:30 AM</option><option>2:35 AM</option><option>2:40 AM</option><option>2:45 AM</option><option>2:50 AM</option><option>2:55 AM</option><option>3:00 AM</option><option>3:05 AM</option><option>3:10 AM</option><option>3:15 AM</option><option>3:20 AM</option><option>3:25 AM</option><option>3:30 AM</option><option>3:35 AM</option><option>3:40 AM</option><option>3:45 AM</option><option>3:50 AM</option><option>3:55 AM</option><option>4:00 AM</option><option>4:05 AM</option><option>4:10 AM</option><option>4:15 AM</option><option>4:20 AM</option><option>4:25 AM</option><option>4:30 AM</option><option>4:35 AM</option><option>4:40 AM</option><option>4:45 AM</option><option>4:50 AM</option><option>4:55 AM</option><option>5:00 AM</option><option>5:05 AM</option><option>5:10 AM</option><option>5:15 AM</option><option>5:20 AM</option><option>5:25 AM</option><option>5:30 AM</option><option>5:35 AM</option><option>5:40 AM</option><option>5:45 AM</option><option>5:50 AM</option><option>5:55 AM</option><option>6:00 AM</option><option>6:05 AM</option><option>6:10 AM</option><option>6:15 AM</option><option>6:20 AM</option><option>6:25 AM</option><option>6:30 AM</option><option>6:35 AM</option><option>6:40 AM</option><option>6:45 AM</option><option>6:50 AM</option><option>6:55 AM</option><option>7:00 AM</option><option>7:05 AM</option><option>7:10 AM</option><option>7:15 AM</option><option>7:20 AM</option><option>7:25 AM</option><option>7:30 AM</option><option>7:35 AM</option><option>7:40 AM</option><option>7:45 AM</option><option>7:50 AM</option><option>7:55 AM</option><option>8:00 AM</option><option>8:05 AM</option><option>8:10 AM</option><option>8:15 AM</option><option>8:20 AM</option><option>8:25 AM</option><option>8:30 AM</option><option>8:35 AM</option><option>8:40 AM</option><option>8:45 AM</option><option>8:50 AM</option><option>8:55 AM</option><option>9:00 AM</option><option>9:05 AM</option><option>9:10 AM</option><option>9:15 AM</option><option>9:20 AM</option><option>9:25 AM</option><option>9:30 AM</option><option>9:35 AM</option><option>9:40 AM</option><option>9:45 AM</option><option>9:50 AM</option><option>9:55 AM</option><option>10:00 AM</option><option>10:05 AM</option><option>10:10 AM</option><option>10:15 AM</option><option>10:20 AM</option><option>10:25 AM</option><option>10:30 AM</option><option>10:35 AM</option><option>10:40 AM</option><option>10:45 AM</option><option>10:50 AM</option><option>10:55 AM</option><option>11:00 AM</option><option>11:05 AM</option><option>11:10 AM</option><option>11:15 AM</option><option>11:20 AM</option><option>11:25 AM</option><option>11:30 AM</option><option>11:35 AM</option><option>11:40 AM</option><option>11:45 AM</option><option>11:50 AM</option><option>11:55 AM</option><option>12:00 PM</option><option>12:05 PM</option><option>12:10 PM</option><option>12:15 PM</option><option>12:20 PM</option><option>12:25 PM</option><option>12:30 PM</option><option>12:35 PM</option><option>12:40 PM</option><option>12:45 PM</option><option>12:50 PM</option><option>12:55 PM</option><option>1:00 PM</option><option>1:05 PM</option><option>1:10 PM</option><option>1:15 PM</option><option>1:20 PM</option><option>1:25 PM</option><option>1:30 PM</option><option>1:35 PM</option><option>1:40 PM</option><option>1:45 PM</option><option>1:50 PM</option><option>1:55 PM</option><option>2:00 PM</option><option>2:05 PM</option><option>2:10 PM</option><option>2:15 PM</option><option>2:20 PM</option><option>2:25 PM</option><option>2:30 PM</option><option>2:35 PM</option><option>2:40 PM</option><option>2:45 PM</option><option>2:50 PM</option><option>2:55 PM</option><option>3:00 PM</option><option>3:05 PM</option><option>3:10 PM</option><option>3:15 PM</option><option>3:20 PM</option><option>3:25 PM</option><option>3:30 PM</option><option>3:35 PM</option><option>3:40 PM</option><option>3:45 PM</option><option>3:50 PM</option><option>3:55 PM</option><option>4:00 PM</option><option>4:05 PM</option><option>4:10 PM</option><option>4:15 PM</option><option>4:20 PM</option><option>4:25 PM</option><option>4:30 PM</option><option>4:35 PM</option><option>4:40 PM</option><option>4:45 PM</option><option>4:50 PM</option><option>4:55 PM</option><option>5:00 PM</option><option>5:05 PM</option><option>5:10 PM</option><option>5:15 PM</option><option>5:20 PM</option><option>5:25 PM</option><option>5:30 PM</option><option>5:35 PM</option><option>5:40 PM</option><option>5:45 PM</option><option>5:50 PM</option><option>5:55 PM</option><option>6:00 PM</option><option>6:05 PM</option><option>6:10 PM</option><option>6:15 PM</option><option>6:20 PM</option><option>6:25 PM</option><option>6:30 PM</option><option>6:35 PM</option><option>6:40 PM</option><option>6:45 PM</option><option>6:50 PM</option><option>6:55 PM</option><option>7:00 PM</option><option>7:05 PM</option><option>7:10 PM</option><option>7:15 PM</option><option>7:20 PM</option><option>7:25 PM</option><option>7:30 PM</option><option>7:35 PM</option><option>7:40 PM</option><option>7:45 PM</option><option>7:50 PM</option><option>7:55 PM</option><option>8:00 PM</option><option>8:05 PM</option><option>8:10 PM</option><option>8:15 PM</option><option>8:20 PM</option><option>8:25 PM</option><option>8:30 PM</option><option>8:35 PM</option><option>8:40 PM</option><option>8:45 PM</option><option>8:50 PM</option><option>8:55 PM</option><option>9:00 PM</option><option>9:05 PM</option><option>9:10 PM</option><option>9:15 PM</option><option>9:20 PM</option><option>9:25 PM</option><option>9:30 PM</option><option>9:35 PM</option><option>9:40 PM</option><option>9:45 PM</option><option>9:50 PM</option><option>9:55 PM</option><option>10:00 PM</option><option>10:05 PM</option><option>10:10 PM</option><option>10:15 PM</option><option>10:20 PM</option><option>10:25 PM</option><option>10:30 PM</option><option>10:35 PM</option><option>10:40 PM</option><option>10:45 PM</option><option>10:50 PM</option><option>10:55 PM</option><option>11:00 PM</option><option>11:05 PM</option><option>11:10 PM</option><option>11:15 PM</option><option>11:20 PM</option><option>11:25 PM</option><option>11:30 PM</option><option>11:35 PM</option><option>11:40 PM</option><option>11:45 PM</option><option>11:50 PM</option><option>11:55 PM</option></select></div></div><div><label style="font-size:12px;font-weight:600;color:#1B3A6B;display:block;margin-bottom:5px;">Reminder Preference</label><select id="book-reminder" style="width:100%;padding:10px;border:1px solid #B8D0E8;border-radius:8px;font-size:14px;box-sizing:border-box;"><option value="both">SMS &amp; Email</option><option value="sms">SMS only</option><option value="email">Email only</option><option value="none">No reminders</option></select></div><div><label style="font-size:12px;font-weight:600;color:#1B3A6B;display:block;margin-bottom:5px;">Notes</label><textarea id="book-notes" placeholder="Any additional details..." rows="3" style="width:100%;padding:10px;border:1px solid #B8D0E8;border-radius:8px;font-size:14px;resize:vertical;box-sizing:border-box;"></textarea></div><div style="display:flex;gap:12px;margin-top:8px;"><button onclick="document.getElementById('book-appt-modal').style.display='none'" style="flex:1;padding:12px;border:1.5px solid #B8D0E8;border-radius:8px;background:#fff;color:#1B3A6B;font-size:14px;font-weight:600;cursor:pointer;">Cancel</button><button onclick="confirmBookAppointment()" style="flex:2;padding:12px;border:none;border-radius:8px;background:#1B3A6B;color:#fff;font-size:14px;font-weight:700;cursor:pointer;">&#x2713; Confirm Booking</button></div></div></div></div>
+<div id="new-appt-modal" style="display:none;position:fixed;inset:0;background:rgba(27,58,107,.55);z-index:9999;align-items:center;justify-content:center;overflow-y:auto;"><div style="background:#fff;border-radius:16px;padding:32px;max-width:560px;width:92%;margin:20px auto;box-shadow:0 20px 60px rgba(27,58,107,.25);"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;"><h3 style="color:#1B3A6B;font-size:20px;font-weight:700;margin:0;">&#x1F4C6; New Appointment</h3><button onclick="document.getElementById('new-appt-modal').style.display='none'" style="background:none;border:none;font-size:26px;cursor:pointer;color:#B8D0E8;">&times;</button></div><div style="display:flex;gap:0;border:1.5px solid #B8D0E8;border-radius:8px;overflow:hidden;margin-bottom:20px;"><button id="new-type-customer" onclick="setNewApptType('customer')" style="flex:1;padding:10px;border:none;background:#1B3A6B;color:#fff;font-size:13px;font-weight:600;cursor:pointer;">&#x1F464; Customer Appointment</button><button id="new-type-internal" onclick="setNewApptType('internal')" style="flex:1;padding:10px;border:none;background:#fff;color:#1B3A6B;font-size:13px;font-weight:600;cursor:pointer;">&#x1F465; Internal Meeting</button></div><div id="new-appt-type-label" style="font-size:11px;font-weight:600;letter-spacing:2px;text-transform:uppercase;color:#2E75B6;margin-bottom:14px;">Customer Appointment</div><div style="display:flex;flex-direction:column;gap:14px;"><div id="new-customer-field"><label style="font-size:12px;font-weight:600;color:#1B3A6B;display:block;margin-bottom:5px;">Customer Name *</label><input id="new-customer-name" type="text" placeholder="Full name" style="width:100%;padding:10px;border:1px solid #B8D0E8;border-radius:8px;font-size:14px;box-sizing:border-box;"></div><div><label style="font-size:12px;font-weight:600;color:#1B3A6B;display:block;margin-bottom:5px;">Title / Service *</label><input id="new-appt-title" type="text" placeholder="e.g. Roof Inspection, Team Standup..." style="width:100%;padding:10px;border:1px solid #B8D0E8;border-radius:8px;font-size:14px;box-sizing:border-box;"></div><div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;"><div><label style="font-size:12px;font-weight:600;color:#1B3A6B;display:block;margin-bottom:5px;">Date *</label><input id="new-appt-date" type="date" style="width:100%;padding:10px;border:1px solid #B8D0E8;border-radius:8px;font-size:14px;box-sizing:border-box;"></div><div><label style="font-size:12px;font-weight:600;color:#1B3A6B;display:block;margin-bottom:5px;">Time *</label><select id="new-appt-time" style="width:100%;padding:10px;border:1px solid #B8D0E8;border-radius:8px;font-size:14px;box-sizing:border-box;"><option value="">Select time...</option><option>12:00 AM</option><option>12:05 AM</option><option>12:10 AM</option><option>12:15 AM</option><option>12:20 AM</option><option>12:25 AM</option><option>12:30 AM</option><option>12:35 AM</option><option>12:40 AM</option><option>12:45 AM</option><option>12:50 AM</option><option>12:55 AM</option><option>1:00 AM</option><option>1:05 AM</option><option>1:10 AM</option><option>1:15 AM</option><option>1:20 AM</option><option>1:25 AM</option><option>1:30 AM</option><option>1:35 AM</option><option>1:40 AM</option><option>1:45 AM</option><option>1:50 AM</option><option>1:55 AM</option><option>2:00 AM</option><option>2:05 AM</option><option>2:10 AM</option><option>2:15 AM</option><option>2:20 AM</option><option>2:25 AM</option><option>2:30 AM</option><option>2:35 AM</option><option>2:40 AM</option><option>2:45 AM</option><option>2:50 AM</option><option>2:55 AM</option><option>3:00 AM</option><option>3:05 AM</option><option>3:10 AM</option><option>3:15 AM</option><option>3:20 AM</option><option>3:25 AM</option><option>3:30 AM</option><option>3:35 AM</option><option>3:40 AM</option><option>3:45 AM</option><option>3:50 AM</option><option>3:55 AM</option><option>4:00 AM</option><option>4:05 AM</option><option>4:10 AM</option><option>4:15 AM</option><option>4:20 AM</option><option>4:25 AM</option><option>4:30 AM</option><option>4:35 AM</option><option>4:40 AM</option><option>4:45 AM</option><option>4:50 AM</option><option>4:55 AM</option><option>5:00 AM</option><option>5:05 AM</option><option>5:10 AM</option><option>5:15 AM</option><option>5:20 AM</option><option>5:25 AM</option><option>5:30 AM</option><option>5:35 AM</option><option>5:40 AM</option><option>5:45 AM</option><option>5:50 AM</option><option>5:55 AM</option><option>6:00 AM</option><option>6:05 AM</option><option>6:10 AM</option><option>6:15 AM</option><option>6:20 AM</option><option>6:25 AM</option><option>6:30 AM</option><option>6:35 AM</option><option>6:40 AM</option><option>6:45 AM</option><option>6:50 AM</option><option>6:55 AM</option><option>7:00 AM</option><option>7:05 AM</option><option>7:10 AM</option><option>7:15 AM</option><option>7:20 AM</option><option>7:25 AM</option><option>7:30 AM</option><option>7:35 AM</option><option>7:40 AM</option><option>7:45 AM</option><option>7:50 AM</option><option>7:55 AM</option><option>8:00 AM</option><option>8:05 AM</option><option>8:10 AM</option><option>8:15 AM</option><option>8:20 AM</option><option>8:25 AM</option><option>8:30 AM</option><option>8:35 AM</option><option>8:40 AM</option><option>8:45 AM</option><option>8:50 AM</option><option>8:55 AM</option><option>9:00 AM</option><option>9:05 AM</option><option>9:10 AM</option><option>9:15 AM</option><option>9:20 AM</option><option>9:25 AM</option><option>9:30 AM</option><option>9:35 AM</option><option>9:40 AM</option><option>9:45 AM</option><option>9:50 AM</option><option>9:55 AM</option><option>10:00 AM</option><option>10:05 AM</option><option>10:10 AM</option><option>10:15 AM</option><option>10:20 AM</option><option>10:25 AM</option><option>10:30 AM</option><option>10:35 AM</option><option>10:40 AM</option><option>10:45 AM</option><option>10:50 AM</option><option>10:55 AM</option><option>11:00 AM</option><option>11:05 AM</option><option>11:10 AM</option><option>11:15 AM</option><option>11:20 AM</option><option>11:25 AM</option><option>11:30 AM</option><option>11:35 AM</option><option>11:40 AM</option><option>11:45 AM</option><option>11:50 AM</option><option>11:55 AM</option><option>12:00 PM</option><option>12:05 PM</option><option>12:10 PM</option><option>12:15 PM</option><option>12:20 PM</option><option>12:25 PM</option><option>12:30 PM</option><option>12:35 PM</option><option>12:40 PM</option><option>12:45 PM</option><option>12:50 PM</option><option>12:55 PM</option><option>1:00 PM</option><option>1:05 PM</option><option>1:10 PM</option><option>1:15 PM</option><option>1:20 PM</option><option>1:25 PM</option><option>1:30 PM</option><option>1:35 PM</option><option>1:40 PM</option><option>1:45 PM</option><option>1:50 PM</option><option>1:55 PM</option><option>2:00 PM</option><option>2:05 PM</option><option>2:10 PM</option><option>2:15 PM</option><option>2:20 PM</option><option>2:25 PM</option><option>2:30 PM</option><option>2:35 PM</option><option>2:40 PM</option><option>2:45 PM</option><option>2:50 PM</option><option>2:55 PM</option><option>3:00 PM</option><option>3:05 PM</option><option>3:10 PM</option><option>3:15 PM</option><option>3:20 PM</option><option>3:25 PM</option><option>3:30 PM</option><option>3:35 PM</option><option>3:40 PM</option><option>3:45 PM</option><option>3:50 PM</option><option>3:55 PM</option><option>4:00 PM</option><option>4:05 PM</option><option>4:10 PM</option><option>4:15 PM</option><option>4:20 PM</option><option>4:25 PM</option><option>4:30 PM</option><option>4:35 PM</option><option>4:40 PM</option><option>4:45 PM</option><option>4:50 PM</option><option>4:55 PM</option><option>5:00 PM</option><option>5:05 PM</option><option>5:10 PM</option><option>5:15 PM</option><option>5:20 PM</option><option>5:25 PM</option><option>5:30 PM</option><option>5:35 PM</option><option>5:40 PM</option><option>5:45 PM</option><option>5:50 PM</option><option>5:55 PM</option><option>6:00 PM</option><option>6:05 PM</option><option>6:10 PM</option><option>6:15 PM</option><option>6:20 PM</option><option>6:25 PM</option><option>6:30 PM</option><option>6:35 PM</option><option>6:40 PM</option><option>6:45 PM</option><option>6:50 PM</option><option>6:55 PM</option><option>7:00 PM</option><option>7:05 PM</option><option>7:10 PM</option><option>7:15 PM</option><option>7:20 PM</option><option>7:25 PM</option><option>7:30 PM</option><option>7:35 PM</option><option>7:40 PM</option><option>7:45 PM</option><option>7:50 PM</option><option>7:55 PM</option><option>8:00 PM</option><option>8:05 PM</option><option>8:10 PM</option><option>8:15 PM</option><option>8:20 PM</option><option>8:25 PM</option><option>8:30 PM</option><option>8:35 PM</option><option>8:40 PM</option><option>8:45 PM</option><option>8:50 PM</option><option>8:55 PM</option><option>9:00 PM</option><option>9:05 PM</option><option>9:10 PM</option><option>9:15 PM</option><option>9:20 PM</option><option>9:25 PM</option><option>9:30 PM</option><option>9:35 PM</option><option>9:40 PM</option><option>9:45 PM</option><option>9:50 PM</option><option>9:55 PM</option><option>10:00 PM</option><option>10:05 PM</option><option>10:10 PM</option><option>10:15 PM</option><option>10:20 PM</option><option>10:25 PM</option><option>10:30 PM</option><option>10:35 PM</option><option>10:40 PM</option><option>10:45 PM</option><option>10:50 PM</option><option>10:55 PM</option><option>11:00 PM</option><option>11:05 PM</option><option>11:10 PM</option><option>11:15 PM</option><option>11:20 PM</option><option>11:25 PM</option><option>11:30 PM</option><option>11:35 PM</option><option>11:40 PM</option><option>11:45 PM</option><option>11:50 PM</option><option>11:55 PM</option></select></div></div><div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;"><div><label style="font-size:12px;font-weight:600;color:#1B3A6B;display:block;margin-bottom:5px;">Duration</label><select id="new-appt-duration" style="width:100%;padding:10px;border:1px solid #B8D0E8;border-radius:8px;font-size:14px;box-sizing:border-box;"><option value="15">15 minutes</option><option value="30">30 minutes</option><option value="45">45 minutes</option><option value="60">1 hour</option><option value="75">1 hr 15 min</option><option value="90">1 hr 30 min</option><option value="105">1 hr 45 min</option><option value="120">2 hours</option><option value="135">2 hr 15 min</option><option value="150">2 hr 30 min</option><option value="165">2 hr 45 min</option><option value="180">3 hours</option><option value="195">3 hr 15 min</option><option value="210">3 hr 30 min</option><option value="225">3 hr 45 min</option><option value="240">4 hours</option><option value="255">4 hr 15 min</option><option value="270">4 hr 30 min</option><option value="285">4 hr 45 min</option><option value="300">5 hours</option><option value="315">5 hr 15 min</option><option value="330">5 hr 30 min</option><option value="345">5 hr 45 min</option><option value="360">6 hours</option><option value="375">6 hr 15 min</option><option value="390">6 hr 30 min</option><option value="405">6 hr 45 min</option><option value="420">7 hours</option><option value="435">7 hr 15 min</option><option value="450">7 hr 30 min</option><option value="465">7 hr 45 min</option><option value="480">8 hours</option></select></div><div><label style="font-size:12px;font-weight:600;color:#1B3A6B;display:block;margin-bottom:5px;">Assigned To</label><select id="new-appt-assignee" style="width:100%;padding:10px;border:1px solid #B8D0E8;border-radius:8px;font-size:14px;box-sizing:border-box;"><option value="unassigned">&#x2014; Unassigned &#x2014;</option><option>D. Lee</option><option>T. Kim</option><option>R. Brooks</option></select></div></div><div><label style="font-size:12px;font-weight:600;color:#1B3A6B;display:block;margin-bottom:5px;">Notes</label><textarea id="new-appt-notes" placeholder="Any details or special instructions..." rows="3" style="width:100%;padding:10px;border:1px solid #B8D0E8;border-radius:8px;font-size:14px;resize:vertical;box-sizing:border-box;"></textarea></div><div style="display:flex;gap:12px;margin-top:8px;"><button onclick="document.getElementById('new-appt-modal').style.display='none'" style="flex:1;padding:12px;border:1.5px solid #B8D0E8;border-radius:8px;background:#fff;color:#1B3A6B;font-size:14px;font-weight:600;cursor:pointer;">Cancel</button><button onclick="confirmNewAppointment()" style="flex:2;padding:12px;border:none;border-radius:8px;background:#1B3A6B;color:#fff;font-size:14px;font-weight:700;cursor:pointer;">&#x2713; Add to Calendar</button></div></div></div></div>
 
 <div id="add-lead-modal" style="display:none;position:fixed;inset:0;background:rgba(27,58,107,.55);z-index:9999;align-items:center;justify-content:center;overflow-y:auto;">
   <div style="background:#fff;border-radius:16px;padding:32px;max-width:560px;width:92%;margin:20px auto;box-shadow:0 20px 60px rgba(27,58,107,.25);">
@@ -918,6 +1291,60 @@ Powered by OperaIQ</textarea>
         <button onclick="document.getElementById('edit-template-modal').style.display='none'" style="flex:1;padding:12px;border:1.5px solid #B8D0E8;border-radius:8px;background:#fff;color:#1B3A6B;font-size:14px;font-weight:600;cursor:pointer;">Cancel</button>
         <button onclick="saveEmailTemplate()" style="flex:2;padding:12px;border:none;border-radius:8px;background:#1B3A6B;color:#fff;font-size:14px;font-weight:700;cursor:pointer;">&#x2713; Save Template</button>
       </div>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: Appointment Detail -->
+<div id="appt-detail-modal" style="display:none;position:fixed;inset:0;background:rgba(27,58,107,0.35);z-index:9999;align-items:center;justify-content:center;">
+  <div style="background:#fff;border-radius:16px;padding:28px;max-width:480px;width:calc(100% - 40px);box-shadow:0 8px 40px rgba(27,58,107,0.18);">
+    <h3 class="ad-title" style="margin:0 0 16px;font-size:16px;color:#1B3A6B;font-weight:700;"></h3>
+    <div class="ad-body"></div>
+  </div>
+</div>
+<!-- MODAL: Export -->
+<div id="export-modal" style="display:none;position:fixed;inset:0;background:rgba(27,58,107,0.35);z-index:9999;align-items:center;justify-content:center;">
+  <div style="background:#fff;border-radius:16px;padding:28px;max-width:400px;width:calc(100% - 40px);box-shadow:0 8px 40px rgba(27,58,107,0.18);">
+    <h3 style="margin:0 0 8px;font-size:16px;color:#1B3A6B;font-weight:700;">Export Appointments</h3>
+    <p style="color:#5B6F85;font-size:13px;margin:0 0 20px;">Select a format to export your active appointments.</p>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px;">
+      <button onclick="doExport('pdf')" style="padding:12px;border:1.5px solid #B8D0E8;border-radius:8px;background:#fff;color:#1B3A6B;font-size:13px;font-weight:600;cursor:pointer;">&#x1F4C4; PDF</button>
+      <button onclick="doExport('csv')" style="padding:12px;border:1.5px solid #B8D0E8;border-radius:8px;background:#fff;color:#1B3A6B;font-size:13px;font-weight:600;cursor:pointer;">&#x1F4CA; CSV</button>
+      <button onclick="doExport('xlsx')" style="padding:12px;border:1.5px solid #B8D0E8;border-radius:8px;background:#fff;color:#1B3A6B;font-size:13px;font-weight:600;cursor:pointer;">&#x1F4C8; XLSX</button>
+      <button onclick="doExport('docx')" style="padding:12px;border:1.5px solid #B8D0E8;border-radius:8px;background:#fff;color:#1B3A6B;font-size:13px;font-weight:600;cursor:pointer;">&#x1F4DD; DOCX</button>
+    </div>
+    <button onclick="document.getElementById('export-modal').style.display='none'" style="width:100%;padding:10px;border:1.5px solid #B8D0E8;border-radius:8px;background:#fff;color:#1B3A6B;font-size:13px;font-weight:600;cursor:pointer;">Cancel</button>
+  </div>
+</div>
+<!-- MODAL: Edit Task -->
+<div id="edit-task-modal" style="display:none;position:fixed;inset:0;background:rgba(27,58,107,0.35);z-index:9999;align-items:center;justify-content:center;" data-row-ref="-1" data-appt-id="">
+  <div style="background:#fff;border-radius:16px;padding:28px;max-width:480px;width:calc(100% - 40px);box-shadow:0 8px 40px rgba(27,58,107,0.18);max-height:90vh;overflow-y:auto;">
+    <h3 style="margin:0 0 20px;font-size:16px;color:#1B3A6B;font-weight:700;">&#x270F; Edit Task</h3>
+    <div style="display:grid;gap:14px;">
+      <div><label style="font-size:11px;font-weight:600;color:#8BA5C0;display:block;margin-bottom:4px;">EMPLOYEE</label>
+        <select id="et-employee" style="width:100%;padding:10px 12px;border:1.5px solid #B8D0E8;border-radius:8px;font-size:13px;color:#1B3A6B;background:#F5F8FB;">
+          <option>D. Lee</option><option>T. Kim</option><option>R. Brooks</option><option>J. Park</option><option>Unassigned</option>
+        </select></div>
+      <div><label style="font-size:11px;font-weight:600;color:#8BA5C0;display:block;margin-bottom:4px;">CUSTOMER</label>
+        <input id="et-customer" type="text" style="width:100%;padding:10px 12px;border:1.5px solid #B8D0E8;border-radius:8px;font-size:13px;color:#1B3A6B;background:#F5F8FB;box-sizing:border-box;"></div>
+      <div><label style="font-size:11px;font-weight:600;color:#8BA5C0;display:block;margin-bottom:4px;">SERVICE</label>
+        <input id="et-service" type="text" style="width:100%;padding:10px 12px;border:1.5px solid #B8D0E8;border-radius:8px;font-size:13px;color:#1B3A6B;background:#F5F8FB;box-sizing:border-box;"></div>
+      <div><label style="font-size:11px;font-weight:600;color:#8BA5C0;display:block;margin-bottom:4px;">ADDRESS</label>
+        <input id="et-address" type="text" style="width:100%;padding:10px 12px;border:1.5px solid #B8D0E8;border-radius:8px;font-size:13px;color:#1B3A6B;background:#F5F8FB;box-sizing:border-box;"></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+        <div><label style="font-size:11px;font-weight:600;color:#8BA5C0;display:block;margin-bottom:4px;">PRIORITY</label>
+          <select id="et-priority" style="width:100%;padding:10px 12px;border:1.5px solid #B8D0E8;border-radius:8px;font-size:13px;color:#1B3A6B;background:#F5F8FB;">
+            <option>Emergency</option><option>High</option><option>Normal</option><option>Low</option>
+          </select></div>
+        <div><label style="font-size:11px;font-weight:600;color:#8BA5C0;display:block;margin-bottom:4px;">STATUS</label>
+          <select id="et-status" style="width:100%;padding:10px 12px;border:1.5px solid #B8D0E8;border-radius:8px;font-size:13px;color:#1B3A6B;background:#F5F8FB;">
+            <option>Pending</option><option>Assigned</option><option>En Route</option><option>In Progress</option><option>Confirmed</option><option>Completed</option><option>Cancelled</option>
+          </select></div>
+      </div>
+    </div>
+    <div style="display:flex;gap:10px;margin-top:20px;">
+      <button onclick="document.getElementById('edit-task-modal').style.display='none'" style="flex:1;padding:10px;border:1.5px solid #B8D0E8;border-radius:8px;background:#fff;color:#1B3A6B;font-size:13px;font-weight:600;cursor:pointer;">Cancel</button>
+      <button onclick="saveEditTask()" style="flex:2;padding:10px;border:none;border-radius:8px;background:#1B3A6B;color:#fff;font-size:13px;font-weight:700;cursor:pointer;">Save Changes</button>
     </div>
   </div>
 </div>
