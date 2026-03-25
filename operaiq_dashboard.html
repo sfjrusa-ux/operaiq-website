@@ -289,7 +289,8 @@ function renderMonthView(grid, d) {
   var firstDay = new Date(d.getFullYear(), d.getMonth(), 1).getDay();
   var daysInMonth = new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate();
   var today = new Date();
-  var html = '<div style="display:grid;grid-template-columns:repeat(7,1fr);gap:1px;background:#EBF3FA;border-radius:8px;overflow:hidden;">';
+  grid.style.cssText = 'display:grid;grid-template-columns:repeat(7,1fr);gap:1px;background:#EBF3FA;border-radius:8px;overflow:hidden;height:auto;';
+  var html = '';
   var dayNames = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
   for (var dn = 0; dn < 7; dn++) {
     html += '<div style="background:#1B3A6B;color:#fff;text-align:center;padding:8px;font-size:12px;font-weight:600;">' + dayNames[dn] + '</div>';
@@ -309,7 +310,6 @@ function renderMonthView(grid, d) {
     }
     html += '</div>';
   }
-  html += '</div>';
   grid.innerHTML = html;
 }
 function renderWeekView(grid, d) {
@@ -317,7 +317,8 @@ function renderWeekView(grid, d) {
   var startOfWeek = new Date(d);
   startOfWeek.setDate(d.getDate() - d.getDay());
   var today = new Date();
-  var html = '<div style="display:grid;grid-template-columns:60px repeat(7,1fr);gap:1px;background:#EBF3FA;border-radius:8px;overflow:hidden;">';
+  grid.style.cssText = 'display:grid;grid-template-columns:60px repeat(7,1fr);gap:1px;background:#EBF3FA;border-radius:8px;overflow:hidden;height:auto;';
+  var html = '';
   html += '<div style="background:#1B3A6B;"></div>';
   for (var di = 0; di < 7; di++) {
     var dayDate = new Date(startOfWeek);
@@ -345,11 +346,11 @@ function renderWeekView(grid, d) {
       html += '</div>';
     }
   }
-  html += '</div>';
   grid.innerHTML = html;
 }
 function renderDayView(grid, d) {
-  var html = '<div style="border-radius:8px;overflow:hidden;border:1px solid #EBF3FA;">';
+  grid.style.cssText = 'display:block;border-radius:8px;overflow:hidden;border:1px solid #EBF3FA;height:auto;';
+  var html = '';
   for (var hour = 0; hour < 24; hour++) {
     var h12 = hour === 0 ? 12 : (hour > 12 ? hour - 12 : hour);
     var ampm = hour < 12 ? 'AM' : 'PM';
@@ -370,7 +371,6 @@ function renderDayView(grid, d) {
     }
     html += '</div></div>';
   }
-  html += '</div>';
   grid.innerHTML = html;
 }
 
